@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { loadStripe } from '@stripe/stripe-js';
 import listingsService from '../services/listings.service';
 import Loading from '../components/common/Loading';
+import API_CONFIG from '../config/api.config';
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || 'pk_test_51SVSBzRzbAEw3lJruo2IX6RO0JTyVxXghOmK1SKgwvf8BrixjT8L8vvKU10dEkmVyMKa6IJhUKyRKwhEtauQ0lzw00WwGgWFZD');
 
@@ -51,7 +52,7 @@ const Payment = () => {
         setIsProcessing(true);
         try {
             // Create checkout session
-            const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/payments/create-checkout-session`, {
+            const response = await fetch(`${API_CONFIG.BASE_URL}/api/payments/create-checkout-session`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

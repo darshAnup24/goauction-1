@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import Loading from '../components/common/Loading';
+import API_CONFIG from '../config/api.config';
 
 const Profile = () => {
     const { user, updateUser } = useAuth();
@@ -52,7 +53,7 @@ const Profile = () => {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.put(
-                'http://localhost:5000/api/users/profile',
+                `${API_CONFIG.BASE_URL}/api/users/profile`,
                 formData,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
@@ -91,7 +92,7 @@ const Profile = () => {
         try {
             const token = localStorage.getItem('token');
             const response = await axios.post(
-                'http://localhost:5000/api/users/upload-avatar',
+                `${API_CONFIG.BASE_URL}/api/users/upload-avatar`,
                 formData,
                 { 
                     headers: { 

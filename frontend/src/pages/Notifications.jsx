@@ -4,6 +4,7 @@ import { Bell, Check, Trash2, TrendingUp, Package, DollarSign } from 'lucide-rea
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
+import API_CONFIG from '../config/api.config';
 import { formatDistanceToNow } from 'date-fns';
 import Loading from '../components/common/Loading';
 
@@ -20,7 +21,7 @@ const Notifications = () => {
     const fetchNotifications = async () => {
         try {
             const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:5000/api/notifications', {
+            const response = await axios.get(`${API_CONFIG.BASE_URL}/api/notifications`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setNotifications(response.data.data || response.data.notifications || []);
@@ -34,7 +35,7 @@ const Notifications = () => {
     const markAsRead = async (id) => {
         try {
             const token = localStorage.getItem('token');
-            await axios.put(`http://localhost:5000/api/notifications/${id}/read`, {}, {
+            await axios.put(`${API_CONFIG.BASE_URL}/api/notifications/${id}/read`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setNotifications(notifications.map(n => 
@@ -48,7 +49,7 @@ const Notifications = () => {
     const markAllAsRead = async () => {
         try {
             const token = localStorage.getItem('token');
-            await axios.put('http://localhost:5000/api/notifications/read-all', {}, {
+            await axios.put(`${API_CONFIG.BASE_URL}/api/notifications/read-all`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setNotifications(notifications.map(n => ({ ...n, isRead: true })));
@@ -61,7 +62,7 @@ const Notifications = () => {
     const deleteNotification = async (id) => {
         try {
             const token = localStorage.getItem('token');
-            await axios.delete(`http://localhost:5000/api/notifications/${id}`, {
+            await axios.delete(`${API_CONFIG.BASE_URL}/api/notifications/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setNotifications(notifications.filter(n => n.id !== id));
