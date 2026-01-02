@@ -1,0 +1,216 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// Enums
+enum UserRole {
+    BUYER
+    SELLER
+    VENDOR
+    ADMIN
+}
+
+enum ListingStatus {
+    UPCOMING
+    LIVE
+    ENDED
+    SOLD
+    UNSOLD
+}
+
+enum BidStatus {
+    ACTIVE
+    OUTBID
+    WINNING
+    WON
+    LOST
+}
+
+enum PaymentStatus {
+    pending
+    succeeded
+    failed
+    refunded
+}
+
+enum NotificationType {
+    BID_PLACED
+    BID_OUTBID
+    AUCTION_WON
+    AUCTION_LOST
+    AUCTION_STARTING
+    AUCTION_ENDING
+    AUCTION_ENDING_SOON
+    PAYMENT_RECEIVED
+    PAYMENT_SENT
+    NEW_MESSAGE
+}
+
+// User Model
+model User {
+    id                       String    @id @default(cuid())
+    email                    String    @unique
+    username                 String    @unique
+    password                 String
+    name                     String
+    phone                    String?
+    address                  String?
+    image                    String?
+    role                     UserRole  @default(BUYER)
+    isVendor                 Boolean   @default(false)
+    stripeAccountId          String?   @unique
+    stripeOnboardingComplete Boolean   @default(false)
+    stripeDetailsSubmitted   Boolean   @default(false)
+    stripeChargesEnabled     Boolean   @default(false)
+    stripePayoutsEnabled     Boolean   @default(false)
+    emailVerified            DateTime?
+    emailVerificationToken   String?   @unique
+    resetToken               String?   @unique
+    resetTokenExpiry         DateTime?
+    rating                   Float     @default(0)
+    totalRatings             Int       @default(0)
+    createdAt                DateTime  @default(now())
+    updatedAt                DateTime  @updatedAt
+
+    // Relations
+    listings          Listing[]      @relation("SellerListings")
+    bids              Bid[]
+    paymentsAsBuyer   Payment[]      @relation("BuyerPayments")
+    paymentsAsSeller  Payment[]      @relation("SellerPayments")
+    notifications     Notification[]
+    ratingsGiven      Rating[]       @relation("RatingsGiven")
+    ratingsReceived   Rating[]       @relation("RatingsReceived")
+
+    @@index([email])
+    @@index([username])
+    @@index([isVendor])
+}
+
+// Listing (Auction Item) Model
+model Listing {
+    id             String        @id @default(cuid())
+    title          String
+    description    String
+    images         String[]      @default([])
+    startingPrice  Float
+    reservePrice   Float?
+    buyNowPrice    Float?
+    currentBid     Float         @default(0)
+    startTime      DateTime
+    endTime        DateTime
+    duration       Int           // in hours
+    status         ListingStatus @default(UPCOMING)
+    category       String
+    sellerId       String
+    winnerId       String?
+    viewCount      Int           @default(0)
+    bidCount       Int           @default(0)
+    createdAt      DateTime      @default(now())
+    updatedAt      DateTime      @updatedAt
+
+    // Relations
+    seller   User      @relation("SellerListings", fields: [sellerId], references: [id], onDelete: Cascade)
+    bids     Bid[]
+    payments Payment[]
+    ratings  Rating[]
+
+    @@index([sellerId])
+    @@index([status])
+    @@index([category])
+    @@index([endTime])
+    @@index([winnerId])
+    @@index([currentBid])
+    @@index([startTime])
+    @@index([bidCount])
+    @@index([createdAt])
+    @@index([status, endTime])
+    @@index([category, status])
+}
+
+// Bid Model
+model Bid {
+    id        String    @id @default(cuid())
+    amount    Float
+    bidderId  String
+    listingId String
+    status    BidStatus @default(ACTIVE)
+    createdAt DateTime  @default(now())
+
+    // Relations
+    bidder  User    @relation(fields: [bidderId], references: [id], onDelete: Cascade)
+    listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+    @@index([bidderId])
+    @@index([listingId])
+    @@index([status])
+    @@index([createdAt])
+    @@index([listingId, status])
+}
+
+// Payment Model
+model Payment {
+    id                     String        @id @default(cuid())
+    stripePaymentIntentId  String?       @unique
+    amount                 Float
+    currency               String        @default("USD")
+    status                 PaymentStatus @default(pending)
+    buyerId                String
+    sellerId               String
+    listingId              String
+    paidAt                 DateTime?
+    createdAt              DateTime      @default(now())
+    updatedAt              DateTime      @updatedAt
+
+    // Relations
+    buyer   User    @relation("BuyerPayments", fields: [buyerId], references: [id])
+    seller  User    @relation("SellerPayments", fields: [sellerId], references: [id])
+    listing Listing @relation(fields: [listingId], references: [id])
+
+    @@index([buyerId])
+    @@index([sellerId])
+    @@index([listingId])
+    @@index([status])
+}
+
+// Notification Model
+model Notification {
+    id        String           @id @default(cuid())
+    userId    String
+    type      NotificationType
+    message   String
+    link      String?
+    read      Boolean          @default(false)
+    createdAt DateTime         @default(now())
+
+    // Relations
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+    @@index([read])
+    @@index([createdAt])
+}
+
+// Rating Model
+model Rating {
+    id         String   @id @default(cuid())
+    rating     Int
+    review     String?
+    fromUserId String
+    toUserId   String
+    listingId  String?
+    createdAt  DateTime @default(now())
+
+    // Relations
+    fromUser User     @relation("RatingsGiven", fields: [fromUserId], references: [id], onDelete: Cascade)
+    toUser   User     @relation("RatingsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+    listing  Listing? @relation(fields: [listingId], references: [id], onDelete: SetNull)
+
+    @@unique([fromUserId, toUserId, listingId])
+    @@index([toUserId])
+    @@index([rating])
+}
