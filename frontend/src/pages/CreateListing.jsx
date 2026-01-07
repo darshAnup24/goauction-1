@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { Upload, X, Plus, DollarSign, Calendar, Tag, FileText } from 'lucide-react';
+import { Upload, X, Plus, DollarSign, Calendar, Tag, FileText, Video } from 'lucide-react';
 import listingsService from '../services/listings.service';
 import uploadService from '../services/upload.service';
 
@@ -25,7 +25,9 @@ const CreateListing = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [uploadingImages, setUploadingImages] = useState(false);
-  
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+
   // Get current time rounded to next hour
   const getDefaultStartTime = () => {
     const now = new Date();
@@ -53,7 +55,8 @@ const CreateListing = () => {
     reservePrice: '',
     startTime: getDefaultStartTime(),
     endTime: getDefaultEndTime(),
-    images: []
+    images: [],
+    videos: []
   });
 
   const handleInputChange = (e) => {
@@ -70,11 +73,11 @@ const CreateListing = () => {
     const end = new Date(formData.endTime);
     const diffMs = end - start;
     if (diffMs <= 0) return 'Invalid duration';
-    
+
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffHours / 24);
     const remainingHours = diffHours % 24;
-    
+
     if (diffDays > 0) {
       return `${diffDays}d ${remainingHours}h`;
     }
@@ -115,6 +118,50 @@ const CreateListing = () => {
     setFormData(prev => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleVideoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (formData.videos.length >= 2) {
+      toast.error('Maximum 2 videos allowed');
+      return;
+    }
+
+    try {
+      uploadService.validateVideo(file);
+    } catch (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setUploadingVideo(true);
+    setVideoUploadProgress(0);
+    try {
+      const data = await uploadService.uploadVideo(file, (progress) => {
+        setVideoUploadProgress(progress);
+      });
+
+      setFormData(prev => ({
+        ...prev,
+        videos: [...prev.videos, data.url]
+      }));
+      toast.success('Video uploaded successfully');
+    } catch (error) {
+      console.error('Video upload error:', error);
+      toast.error(error.response?.data?.message || 'Failed to upload video');
+    } finally {
+      setUploadingVideo(false);
+      setVideoUploadProgress(0);
+    }
+  };
+
+  const removeVideo = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      videos: prev.videos.filter((_, i) => i !== index)
     }));
   };
 
@@ -164,7 +211,7 @@ const CreateListing = () => {
 
     const durationMs = endTime - startTime;
     const durationHours = durationMs / (1000 * 60 * 60);
-    
+
     if (durationHours < 1) {
       toast.error('Auction duration must be at least 1 hour');
       return;
@@ -185,7 +232,8 @@ const CreateListing = () => {
         reservePrice: formData.reservePrice ? parseFloat(formData.reservePrice) : null,
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
-        images: formData.images
+        images: formData.images,
+        videos: formData.videos
       };
 
       const data = await listingsService.createListing(listingData);
@@ -351,7 +399,7 @@ const CreateListing = () => {
               <span className="font-bold">{calculateDuration()}</span>
             </div>
             <p className="text-sm text-blue-600 mt-1">
-              Your auction will run from {new Date(formData.startTime).toLocaleString()} 
+              Your auction will run from {new Date(formData.startTime).toLocaleString()}
               {' '}to {new Date(formData.endTime).toLocaleString()}
             </p>
             <p className="text-xs text-gray-600 mt-2">
@@ -415,6 +463,77 @@ const CreateListing = () => {
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center text-gray-500">
                 <Upload className="w-12 h-12 mx-auto mb-2 text-gray-400" />
                 <p>No images uploaded yet</p>
+              </div>
+            )}
+          </div>
+
+          {/* Videos */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <Video className="w-4 h-4 inline mr-2" />
+              Videos (Optional, Max 2)
+            </label>
+
+            {/* Video Upload Button */}
+            {formData.videos.length < 2 && (
+              <div className="mb-4">
+                <label className="cursor-pointer inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors">
+                  <Video className="w-5 h-5" />
+                  {uploadingVideo ? `Uploading... ${videoUploadProgress}%` : 'Add Video'}
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm,video/quicktime,video/x-msvideo"
+                    onChange={handleVideoUpload}
+                    disabled={uploadingVideo}
+                    className="hidden"
+                  />
+                </label>
+                <p className="text-xs text-gray-500 mt-2">
+                  Supported formats: MP4, WebM, MOV, AVI (Max 100MB)
+                </p>
+                {uploadingVideo && (
+                  <div className="mt-3 w-full bg-gray-200 rounded-full h-2.5">
+                    <div
+                      className="bg-purple-600 h-2.5 rounded-full transition-all duration-300"
+                      style={{ width: `${videoUploadProgress}%` }}
+                    ></div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Video Preview */}
+            {formData.videos.length > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {formData.videos.map((url, index) => (
+                  <div key={index} className="relative group">
+                    <video
+                      src={url}
+                      controls
+                      className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 bg-black"
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                    <button
+                      type="button"
+                      onClick={() => removeVideo(index)}
+                      className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    <div className="absolute bottom-2 left-2 bg-purple-600 text-white text-xs px-2 py-1 rounded">
+                      Video {index + 1}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {formData.videos.length === 0 && (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center text-gray-500">
+                <Video className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                <p>No videos uploaded yet</p>
+                <p className="text-xs mt-1">Videos are optional but can help showcase your product</p>
               </div>
             )}
           </div>

@@ -21,7 +21,7 @@ const ListingDetail = () => {
       setLoading(true);
       setError(null);
       const data = await listingsService.getListingById(id);
-      
+
       if (data.success) {
         setListing(data.listing);
       } else {
@@ -52,10 +52,10 @@ const ListingDetail = () => {
   const handleAuctionExpire = useCallback(() => {
     // Prevent multiple toast notifications
     if (hasExpiredRef.current) return;
-    
+
     hasExpiredRef.current = true;
     toast.success('Auction has ended!');
-    
+
     // Update listing status without refetching
     setListing((prev) => ({
       ...prev,
@@ -101,9 +101,9 @@ const ListingDetail = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column: Images and Details */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Image Gallery */}
+            {/* Media Gallery (Images + Videos) */}
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-              <ImageGallery images={listing.images} />
+              <ImageGallery images={listing.images} videos={listing.videos} />
             </div>
 
             {/* Listing Details */}
@@ -133,7 +133,7 @@ const ListingDetail = () => {
               {/* Countdown Timer */}
               {listing.status === 'LIVE' && (
                 <div className="mb-6">
-                  <CountdownTimer 
+                  <CountdownTimer
                     endTime={listing.endTime}
                     onExpire={handleAuctionExpire}
                     size="lg"

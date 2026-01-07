@@ -28,7 +28,7 @@ const Dashboard = () => {
 
     const fetchDashboardData = async () => {
         if (!user) return;
-        
+
         setLoading(true);
         try {
             // Fetch user's listings
@@ -45,11 +45,11 @@ const Dashboard = () => {
             const activeListings = listingsData.filter(l => l.status === 'LIVE').length;
             const soldListings = listingsData.filter(l => l.status === 'SOLD');
             const revenue = soldListings.reduce((sum, l) => sum + (l.currentBid || 0), 0);
-            
-            const wonAuctions = bidsData.filter(b => 
+
+            const wonAuctions = bidsData.filter(b =>
                 b.listing?.status === 'SOLD' && b.listing?.winnerId === user.id
             ).length;
-            
+
             const activeParticipation = bidsData.filter(b =>
                 b.listing?.status === 'LIVE'
             ).length;
@@ -75,10 +75,10 @@ const Dashboard = () => {
     const calculateTimeLeft = (endTime) => {
         const diff = new Date(endTime) - new Date();
         if (diff <= 0) return 'Ended';
-        
+
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        
+
         if (days > 0) return `${days}d ${hours}h`;
         return `${hours}h`;
     };
@@ -170,7 +170,7 @@ const Dashboard = () => {
                                 View All →
                             </Link>
                         </div>
-                        
+
                         {myListings.length === 0 ? (
                             <div className="text-center py-8">
                                 <Package className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -197,11 +197,10 @@ const Dashboard = () => {
                                                 <h3 className="font-semibold text-gray-900 line-clamp-1">
                                                     {listing.title}
                                                 </h3>
-                                                <span className={`ml-2 px-2 py-1 text-xs font-bold rounded-full ${
-                                                    listing.status === 'LIVE' ? 'bg-green-100 text-green-800' :
+                                                <span className={`ml-2 px-2 py-1 text-xs font-bold rounded-full ${listing.status === 'LIVE' ? 'bg-green-100 text-green-800' :
                                                     listing.status === 'SOLD' ? 'bg-blue-100 text-blue-800' :
-                                                    'bg-gray-100 text-gray-800'
-                                                }`}>
+                                                        'bg-gray-100 text-gray-800'
+                                                    }`}>
                                                     {listing.status}
                                                 </span>
                                             </div>
@@ -235,7 +234,7 @@ const Dashboard = () => {
                                 View All →
                             </Link>
                         </div>
-                        
+
                         {myBids.length === 0 ? (
                             <div className="text-center py-8">
                                 <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-3" />
@@ -247,28 +246,38 @@ const Dashboard = () => {
                         ) : (
                             <div className="space-y-4">
                                 {myBids.map((bid) => {
-                                    const isEnded = bid.listing?.status === 'ENDED' || bid.listing?.status === 'SOLD';
-                                    const isPaid = bid.listing?.status === 'SOLD';
-                                    const isWinning = bid.status === 'WINNING' || (bid.listing?.currentBid === bid.amount && bid.listing?.status === 'LIVE');
-                                    const isWinner = isWinning && isEnded && !isPaid;
-                                    
+                                    const listing = bid.listing;
+                                    if (!listing) return null;
+
+                                    const isEnded = listing.status === 'ENDED' || listing.status === 'SOLD' || listing.status === 'UNSOLD';
+                                    const isPaid = listing.status === 'SOLD';
+
+                                    // Check if this user is the winner
+                                    // Winner is determined by having the highest bid (currentBid) on an ENDED auction
+                                    // Use toFixed to avoid floating point precision issues
+                                    const isHighestBidder = bid.amount.toFixed(2) === listing.currentBid.toFixed(2);
+                                    const isWinner = isEnded && isHighestBidder && !isPaid && listing.status === 'ENDED';
+
+                                    // For live auctions, check if currently winning
+                                    const isWinning = listing.status === 'LIVE' && isHighestBidder;
+
                                     return (
                                         <div
                                             key={bid.id}
                                             className="flex gap-4 p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:shadow-sm transition-all"
                                         >
-                                            <Link to={`/listings/${bid.listing?.id}`} className="flex-shrink-0">
+                                            <Link to={`/listings/${listing.id}`} className="flex-shrink-0">
                                                 <img
-                                                    src={bid.listing?.images?.[0] || '/placeholder.jpg'}
-                                                    alt={bid.listing?.title}
+                                                    src={listing.images?.[0] || '/placeholder.jpg'}
+                                                    alt={listing.title}
                                                     className="w-20 h-20 object-cover rounded-lg"
                                                 />
                                             </Link>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-start justify-between mb-2">
-                                                    <Link to={`/listings/${bid.listing?.id}`} className="flex-1 min-w-0">
+                                                    <Link to={`/listings/${listing.id}`} className="flex-1 min-w-0">
                                                         <h3 className="font-semibold text-gray-900 line-clamp-1 hover:text-blue-600">
-                                                            {bid.listing?.title}
+                                                            {listing.title}
                                                         </h3>
                                                     </Link>
                                                     {isPaid ? (
@@ -286,6 +295,10 @@ const Dashboard = () => {
                                                             <ArrowUpRight className="w-3 h-3" />
                                                             Winning
                                                         </span>
+                                                    ) : listing.status === 'UNSOLD' ? (
+                                                        <span className="ml-2 px-2 py-1 text-xs font-bold rounded-full bg-gray-100 text-gray-800 flex items-center gap-1 flex-shrink-0">
+                                                            Unsold
+                                                        </span>
                                                     ) : (
                                                         <span className="ml-2 px-2 py-1 text-xs font-bold rounded-full bg-red-100 text-red-800 flex items-center gap-1 flex-shrink-0">
                                                             <ArrowDownRight className="w-3 h-3" />
@@ -297,20 +310,20 @@ const Dashboard = () => {
                                                     <span className="text-gray-600">
                                                         Your bid: <span className="font-bold text-gray-900">${bid.amount.toFixed(2)}</span>
                                                     </span>
-                                                    {bid.listing?.currentBid && (
+                                                    {listing.currentBid && (
                                                         <span className="text-gray-600">
-                                                            Current: <span className="font-bold text-blue-600">${bid.listing.currentBid.toFixed(2)}</span>
+                                                            Current: <span className="font-bold text-blue-600">${listing.currentBid.toFixed(2)}</span>
                                                         </span>
                                                     )}
-                                                    {bid.listing?.status === 'LIVE' && (
+                                                    {listing.status === 'LIVE' && (
                                                         <span className="text-gray-500 flex items-center gap-1">
                                                             <Clock className="w-4 h-4" />
-                                                            {calculateTimeLeft(bid.listing?.endTime)}
+                                                            {calculateTimeLeft(listing.endTime)}
                                                         </span>
                                                     )}
                                                     {isWinner && (
                                                         <Link
-                                                            to={`/payment?listing=${bid.listing?.id}`}
+                                                            to={`/payment?listing=${listing.id}`}
                                                             onClick={(e) => e.stopPropagation()}
                                                             className="ml-auto px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-sm flex items-center gap-2 shadow-md"
                                                         >

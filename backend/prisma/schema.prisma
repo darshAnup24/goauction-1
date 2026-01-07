@@ -97,6 +97,7 @@ model Listing {
     title          String
     description    String
     images         String[]      @default([])
+    videos         String[]      @default([])
     startingPrice  Float
     reservePrice   Float?
     buyNowPrice    Float?

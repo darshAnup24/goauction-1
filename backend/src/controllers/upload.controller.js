@@ -7,7 +7,7 @@ class UploadController {
             console.log('📤 Upload request received');
             console.log('User:', req.user?.id);
             console.log('File:', req.file ? req.file.originalname : 'No file');
-            
+
             if (!req.file) {
                 return res.status(400).json({
                     success: false,
@@ -71,6 +71,60 @@ class UploadController {
             res.json({
                 success: true,
                 message: 'Image deleted successfully'
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    // Upload single video
+    async uploadVideo(req, res, next) {
+        try {
+            console.log('📹 Video upload request received');
+            console.log('User:', req.user?.id);
+            console.log('File:', req.file ? req.file.originalname : 'No file');
+
+            if (!req.file) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No video file uploaded'
+                });
+            }
+
+            console.log('📦 Uploading video to S3...');
+            const result = await s3Service.uploadVideo(req.file);
+            console.log('✅ Video upload successful:', result.url);
+
+            res.json({
+                success: true,
+                message: 'Video uploaded successfully',
+                url: result.url,        // CloudFront URL
+                key: result.key,
+                s3Url: result.s3Url    // Original S3 URL
+            });
+        } catch (error) {
+            console.error('❌ Video upload controller error:', error.message);
+            next(error);
+        }
+    }
+
+    // Delete video
+    async deleteVideo(req, res, next) {
+        try {
+            const { url } = req.body;
+
+            if (!url) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Video URL is required'
+                });
+            }
+
+            await s3Service.deleteVideo(url);
+
+            res.json({
+                success: true,
+                message: 'Video deleted successfully'
             });
         } catch (error) {
             next(error);

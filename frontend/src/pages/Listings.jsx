@@ -1,33 +1,35 @@
 import { useState, useEffect, useCallback } from 'react';
+import useDebounce from '../hooks/useDebounce';
 import { useSearchParams, Link } from 'react-router-dom';
 import { Search, SlidersHorizontal, Grid, List, Clock, TrendingUp, DollarSign, Filter } from 'lucide-react';
+import SearchWithSuggestions from '../components/common/SearchWithSuggestions';
 import listingsService from '../services/listings.service';
 import Loading from '../components/common/Loading';
 import toast from 'react-hot-toast';
 
 const CATEGORIES = [
-  'All',
-  'Electronics',
-  'Fashion',
-  'Home & Garden',
-  'Sports',
-  'Books',
-  'Toys',
-  'Collectibles',
-  'Art',
-  'Jewelry',
-  'Automotive',
-  'Musical Instruments',
-  'Furniture',
-  'Other'
+    'All',
+    'Electronics',
+    'Fashion',
+    'Home & Garden',
+    'Sports',
+    'Books',
+    'Toys',
+    'Collectibles',
+    'Art',
+    'Jewelry',
+    'Automotive',
+    'Musical Instruments',
+    'Furniture',
+    'Other'
 ];
 
 const SORT_OPTIONS = [
-  { value: 'newly-listed', label: 'Newly Listed' },
-  { value: 'ending-soon', label: 'Ending Soon' },
-  { value: 'price-low', label: 'Price: Low to High' },
-  { value: 'price-high', label: 'Price: High to Low' },
-  { value: 'most-bids', label: 'Most Bids' },
+    { value: 'newly-listed', label: 'Newly Listed' },
+    { value: 'ending-soon', label: 'Ending Soon' },
+    { value: 'price-low', label: 'Price: Low to High' },
+    { value: 'price-high', label: 'Price: High to Low' },
+    { value: 'most-bids', label: 'Most Bids' },
 ];
 
 const Listings = () => {
@@ -48,11 +50,15 @@ const Listings = () => {
         limit: 12
     });
 
+    // Debounce the search term to avoid excessive API calls
+    const debouncedSearch = useDebounce(filters.search, 500);
+
     const fetchListings = useCallback(async () => {
         setLoading(true);
         try {
             const queryParams = {
                 ...filters,
+                search: debouncedSearch, // Use debounced search value
                 category: filters.category === 'All' ? '' : filters.category
             };
             const response = await listingsService.getAllListings(queryParams);
@@ -64,29 +70,38 @@ const Listings = () => {
         } finally {
             setLoading(false);
         }
-    }, [filters]);
+    }, [filters, debouncedSearch]);
 
     useEffect(() => {
         fetchListings();
-        setSearchParams(filters);
-    }, [filters]);
+    }, [fetchListings]);
+
+    // Update URL params when filters change (including debounced search)
+    useEffect(() => {
+        const params = { ...filters };
+        if (debouncedSearch !== filters.search) {
+            // Don't update URL until search is debounced
+            return;
+        }
+        setSearchParams(params);
+    }, [filters, debouncedSearch, setSearchParams]);
 
     const handleFilterChange = (key, value) => {
         setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
     };
 
-    const handleSearch = (e) => {
-        e.preventDefault();
+    const handleSearchSubmit = (searchTerm) => {
+        handleFilterChange('search', searchTerm);
     };
 
     const calculateTimeLeft = (endTime) => {
         const diff = new Date(endTime) - new Date();
         if (diff <= 0) return 'Ended';
-        
+
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        
+
         if (days > 0) return `${days}d ${hours}h`;
         if (hours > 0) return `${hours}h ${minutes}m`;
         return `${minutes}m`;
@@ -107,28 +122,21 @@ const Listings = () => {
                     <p className="text-gray-600">{totalCount} active auctions available</p>
                 </div>
 
-                {/* Search Bar */}
-                <div className="mb-6">
-                    <form onSubmit={handleSearch} className="flex gap-3">
-                        <div className="flex-1 relative">
-                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                            <input
-                                type="text"
-                                placeholder="Search auctions by title, description..."
-                                className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                value={filters.search}
-                                onChange={(e) => handleFilterChange('search', e.target.value)}
-                            />
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => setShowFilters(!showFilters)}
-                            className="px-6 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
-                        >
-                            <SlidersHorizontal className="w-5 h-5" />
-                            Filters
-                        </button>
-                    </form>
+                {/* Search Bar with Suggestions */}
+                <div className="mb-6 flex gap-3">
+                    <SearchWithSuggestions
+                        placeholder="Search auctions by title, description..."
+                        className="flex-1"
+                        onSearch={handleSearchSubmit}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowFilters(!showFilters)}
+                        className="px-6 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                    >
+                        <SlidersHorizontal className="w-5 h-5" />
+                        Filters
+                    </button>
                 </div>
 
                 {/* Filters Panel */}
@@ -196,7 +204,7 @@ const Listings = () => {
                     <div className="flex items-center gap-4">
                         <span className="text-sm text-gray-600">{listings.length} of {totalCount} results</span>
                     </div>
-                    
+
                     <div className="flex items-center gap-4">
                         {/* Sort */}
                         <select
@@ -256,12 +264,11 @@ const Listings = () => {
                                         alt={listing.title}
                                         className={`object-cover ${viewMode === 'list' ? 'w-full h-full' : 'w-full h-56'}`}
                                     />
-                                    <span className={`absolute top-3 right-3 px-3 py-1 text-xs font-bold rounded-full ${
-                                        listing.status === 'LIVE' ? 'bg-green-100 text-green-800' :
+                                    <span className={`absolute top-3 right-3 px-3 py-1 text-xs font-bold rounded-full ${listing.status === 'LIVE' ? 'bg-green-100 text-green-800' :
                                         listing.status === 'UPCOMING' ? 'bg-yellow-100 text-yellow-800' :
-                                        listing.status === 'ENDED' ? 'bg-gray-100 text-gray-800' :
-                                        'bg-blue-100 text-blue-800'
-                                    }`}>
+                                            listing.status === 'ENDED' ? 'bg-gray-100 text-gray-800' :
+                                                'bg-blue-100 text-blue-800'
+                                        }`}>
                                         {listing.status}
                                     </span>
                                 </div>
@@ -271,9 +278,9 @@ const Listings = () => {
                                             {listing.title}
                                         </h3>
                                     </div>
-                                    
+
                                     <p className="text-gray-600 text-sm mb-4 line-clamp-2">{listing.description}</p>
-                                    
+
                                     <div className="flex items-center justify-between mb-3">
                                         <div>
                                             <p className="text-xs text-gray-500 mb-1">Current Bid</p>
@@ -289,7 +296,7 @@ const Listings = () => {
                                             </p>
                                         </div>
                                     </div>
-                                    
+
                                     <div className="flex items-center justify-between pt-3 border-t">
                                         <div className="flex items-center gap-1 text-sm text-gray-600">
                                             <TrendingUp className="w-4 h-4" />
@@ -321,11 +328,10 @@ const Listings = () => {
                                 <button
                                     key={page}
                                     onClick={() => handleFilterChange('page', page)}
-                                    className={`px-4 py-2 border rounded-lg ${
-                                        filters.page === page
-                                            ? 'bg-blue-600 text-white border-blue-600'
-                                            : 'border-gray-300 hover:bg-gray-50'
-                                    }`}
+                                    className={`px-4 py-2 border rounded-lg ${filters.page === page
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'border-gray-300 hover:bg-gray-50'
+                                        }`}
                                 >
                                     {page}
                                 </button>

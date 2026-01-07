@@ -22,4 +22,25 @@ const upload = multer({
     }
 });
 
+// Video file filter
+const videoFileFilter = (req, file, cb) => {
+    // Accept videos only
+    const allowedTypes = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo'];
+    if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only video files are allowed (MP4, WebM, MOV, AVI)'), false);
+    }
+};
+
+// Video upload configuration
+const videoUpload = multer({
+    storage: storage,
+    fileFilter: videoFileFilter,
+    limits: {
+        fileSize: parseInt(process.env.MAX_VIDEO_SIZE_MB || 100) * 1024 * 1024, // Default 100MB
+    }
+});
+
 module.exports = upload;
+module.exports.videoUpload = videoUpload;

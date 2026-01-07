@@ -22,7 +22,7 @@ class S3Service {
      */
     async uploadImage(file, folder = 'listings') {
         const key = `${folder}/${Date.now()}-${file.originalname.replace(/\s/g, '-')}`;
-        
+
         const command = new PutObjectCommand({
             Bucket: this.bucketName,
             Key: key,
@@ -33,10 +33,19 @@ class S3Service {
 
         try {
             await this.s3Client.send(command);
-            
+
+            const s3Url = `${this.bucketUrl}/${key}`;
+
+            // If CloudFront is configured, return CloudFront URL
+            const cloudFrontDomain = process.env.CLOUDFRONT_DOMAIN;
+            const deliveryUrl = cloudFrontDomain
+                ? `${cloudFrontDomain}/${key}`
+                : s3Url;
+
             return {
-                url: `${this.bucketUrl}/${key}`,
-                key: key
+                url: deliveryUrl,  // CloudFront URL for delivery
+                key: key,
+                s3Url: s3Url      // Original S3 URL for reference
             };
         } catch (error) {
             console.error('S3 upload error:', error);
@@ -111,19 +120,109 @@ class S3Service {
     }
 
     /**
-     * Extract S3 key from URL
-     * @param {String} url - Full S3 URL
+     * Upload video to S3
+     * @param {Object} file - Multer file object
+     * @param {String} folder - Folder name in S3 bucket
+     * @returns {Promise<Object>} - {url, key, cloudFrontUrl}
+     */
+    async uploadVideo(file, folder = 'videos') {
+        const key = `${folder}/${Date.now()}-${file.originalname.replace(/\s/g, '-')}`;
+
+        const command = new PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+        });
+
+        try {
+            await this.s3Client.send(command);
+
+            const s3Url = `${this.bucketUrl}/${key}`;
+
+            // If CloudFront is configured, return CloudFront URL
+            const cloudFrontDomain = process.env.CLOUDFRONT_DOMAIN;
+            const deliveryUrl = cloudFrontDomain
+                ? `${cloudFrontDomain}/${key}`
+                : s3Url;
+
+            return {
+                url: deliveryUrl,  // CloudFront URL for delivery
+                key: key,
+                s3Url: s3Url      // Original S3 URL for reference
+            };
+        } catch (error) {
+            console.error('S3 video upload error:', error);
+            console.error('Error details:', {
+                name: error.name,
+                message: error.message,
+                code: error.code,
+                statusCode: error.$metadata?.httpStatusCode
+            });
+            throw new Error(`Failed to upload video to S3: ${error.message}`);
+        }
+    }
+
+    /**
+     * Upload multiple videos
+     * @param {Array} files - Array of multer file objects
+     * @param {String} folder - Folder name in S3 bucket
+     * @returns {Promise<Array>} - Array of {url, key, cloudFrontUrl} objects
+     */
+    async uploadMultipleVideos(files, folder = 'videos') {
+        const uploadPromises = files.map(file => this.uploadVideo(file, folder));
+        return await Promise.all(uploadPromises);
+    }
+
+    /**
+     * Delete video from S3
+     * @param {String} urlOrKey - S3 URL or object key
+     * @returns {Promise<void>}
+     */
+    async deleteVideo(urlOrKey) {
+        // Extract key from URL if URL is provided
+        const key = urlOrKey.includes('http')
+            ? this.extractKeyFromUrl(urlOrKey)
+            : urlOrKey;
+
+        if (!key) {
+            throw new Error('Invalid video URL or key');
+        }
+
+        const command = new DeleteObjectCommand({
+            Bucket: this.bucketName,
+            Key: key
+        });
+
+        try {
+            await this.s3Client.send(command);
+        } catch (error) {
+            console.error('S3 video delete error:', error);
+            throw new Error('Failed to delete video from S3');
+        }
+    }
+
+    /**
+     * Extract S3 key from URL (works with both S3 and CloudFront URLs)
+     * @param {String} url - Full S3 or CloudFront URL
      * @returns {String} - S3 key
      */
     extractKeyFromUrl(url) {
         if (!url) return null;
-        
-        // Handle both bucket URL formats
+
+        // Handle CloudFront URLs
+        const cloudFrontDomain = process.env.CLOUDFRONT_DOMAIN;
+        if (cloudFrontDomain && url.includes(cloudFrontDomain)) {
+            const urlParts = url.split(cloudFrontDomain + '/');
+            return urlParts.length > 1 ? urlParts[1] : null;
+        }
+
+        // Handle bucket URL formats
         const urlParts = url.split(this.bucketUrl + '/');
         if (urlParts.length > 1) {
             return urlParts[1];
         }
-        
+
         // Fallback for other S3 URL formats
         const match = url.match(/\.s3\..*\.amazonaws\.com\/(.+)/);
         return match ? match[1] : null;

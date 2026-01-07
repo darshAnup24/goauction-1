@@ -259,7 +259,7 @@ class ListingsController {
         try {
             const userId = req.user.id;
             console.log('📝 Creating listing for user:', userId);
-            
+
             const {
                 title,
                 description,
@@ -270,7 +270,8 @@ class ListingsController {
                 startTime,
                 endTime,
                 duration,
-                images
+                images,
+                videos
             } = req.body;
 
             // Validate required fields
@@ -329,6 +330,7 @@ class ListingsController {
                     description,
                     category,
                     images: images || [],
+                    videos: videos || [],
                     startingPrice: parseFloat(startingPrice),
                     reservePrice: reservePrice ? parseFloat(reservePrice) : null,
                     buyNowPrice: buyNowPrice ? parseFloat(buyNowPrice) : null,
@@ -421,7 +423,8 @@ class ListingsController {
                 buyNowPrice,
                 startTime,
                 duration,
-                images
+                images,
+                videos
             } = req.body;
 
             const updateData = {};
@@ -429,6 +432,7 @@ class ListingsController {
             if (description !== undefined) updateData.description = description;
             if (category !== undefined) updateData.category = category;
             if (images !== undefined) updateData.images = images;
+            if (videos !== undefined) updateData.videos = videos;
             if (startingPrice !== undefined) {
                 updateData.startingPrice = parseFloat(startingPrice);
                 updateData.currentBid = parseFloat(startingPrice);
@@ -520,6 +524,17 @@ class ListingsController {
                         await s3Service.deleteImage(imageUrl);
                     } catch (err) {
                         console.error('Error deleting image:', err);
+                    }
+                }
+            }
+
+            // Delete videos from S3
+            if (listing.videos && listing.videos.length > 0) {
+                for (const videoUrl of listing.videos) {
+                    try {
+                        await s3Service.deleteVideo(videoUrl);
+                    } catch (err) {
+                        console.error('Error deleting video:', err);
                     }
                 }
             }
