@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 const PaymentSuccess = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
-    const [countdown, setCountdown] = useState(10);
+    const [countdown, setCountdown] = useState(5);
     const sessionId = searchParams.get('session_id');
     const listingId = searchParams.get('listing');
 
@@ -17,12 +17,12 @@ const PaymentSuccess = () => {
             return;
         }
 
-        // Countdown timer
+        // Countdown timer - redirect to Orders page
         const timer = setInterval(() => {
             setCountdown(prev => {
                 if (prev <= 1) {
                     clearInterval(timer);
-                    navigate('/dashboard');
+                    navigate('/orders'); // Changed from /dashboard to /orders
                     return 0;
                 }
                 return prev - 1;
@@ -104,18 +104,18 @@ const PaymentSuccess = () => {
                         {/* Redirect Notice */}
                         <div className="text-center mb-6">
                             <p className="text-sm text-gray-500">
-                                Redirecting to dashboard in <span className="font-bold text-blue-600">{countdown}</span> seconds...
+                                Redirecting to your orders in <span className="font-bold text-blue-600">{countdown}</span> seconds...
                             </p>
                         </div>
 
                         {/* Action Buttons */}
                         <div className="flex flex-col sm:flex-row gap-3">
                             <Link
-                                to="/dashboard"
+                                to="/orders"
                                 className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold text-center flex items-center justify-center gap-2"
                             >
-                                <FileText className="w-5 h-5" />
-                                Go to Dashboard
+                                <Package className="w-5 h-5" />
+                                View My Orders
                             </Link>
                             <Link
                                 to="/"

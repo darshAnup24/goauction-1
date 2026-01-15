@@ -3,6 +3,7 @@ const app = require('./app');
 const { createServer } = require('http');
 const { initializeSocket } = require('./socket');
 const prisma = require('./models/prisma');
+const schedulerService = require('./services/scheduler.service');
 
 const PORT = process.env.PORT || 5000;
 
@@ -12,9 +13,13 @@ const httpServer = createServer(app);
 // Initialize Socket.IO
 initializeSocket(httpServer);
 
+// Start auction scheduler
+schedulerService.start();
+
 // Graceful shutdown
 process.on('SIGTERM', async () => {
     console.log('SIGTERM received, closing server gracefully...');
+    schedulerService.stop();
     await prisma.$disconnect();
     httpServer.close(() => {
         console.log('Server closed');
@@ -24,6 +29,7 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
     console.log('SIGINT received, closing server gracefully...');
+    schedulerService.stop();
     await prisma.$disconnect();
     httpServer.close(() => {
         console.log('Server closed');

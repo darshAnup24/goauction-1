@@ -2,8 +2,9 @@ import { Bell } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import socketService from "../../services/socket.service";
-import apiClient from "../../services/api.service";
+import notificationsService from "../../services/notifications.service";
 import API_CONFIG from "../../config/api.config";
+import apiClient from "../../services/api.service";
 
 const NotificationBell = ({ userId }) => {
     const [notifications, setNotifications] = useState([]);
@@ -13,7 +14,7 @@ const NotificationBell = ({ userId }) => {
     useEffect(() => {
         if (userId) {
             fetchNotifications();
-            
+
             // Connect socket and listen for new notifications
             socketService.onNotification((notification) => {
                 setNotifications(prev => [notification, ...prev]);
@@ -38,8 +39,8 @@ const NotificationBell = ({ userId }) => {
 
     const markAsRead = async (notificationId) => {
         try {
-            await apiClient.post(API_CONFIG.ENDPOINTS.MARK_READ, { notificationId });
-            setNotifications(prev => 
+            await notificationsService.markAsRead(notificationId);
+            setNotifications(prev =>
                 prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
             );
             setUnreadCount(prev => Math.max(0, prev - 1));
@@ -66,8 +67,8 @@ const NotificationBell = ({ userId }) => {
                 <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border max-h-96 overflow-y-auto">
                     <div className="p-3 border-b flex justify-between items-center">
                         <h3 className="font-semibold">Notifications</h3>
-                        <Link 
-                            to="/notifications" 
+                        <Link
+                            to="/notifications"
                             className="text-sm text-green-600 hover:text-green-700"
                             onClick={() => setShowDropdown(false)}
                         >

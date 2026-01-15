@@ -4,6 +4,7 @@ import { Package, TrendingUp, DollarSign, Clock, Eye, ArrowUpRight, ArrowDownRig
 import { useAuth } from '../../context/AuthContext';
 import listingsService from '../../services/listings.service';
 import bidsService from '../../services/bids.service';
+import socketService from '../../services/socket.service';
 import Loading from '../../components/common/Loading';
 import toast from 'react-hot-toast';
 
@@ -24,6 +25,37 @@ const Dashboard = () => {
 
     useEffect(() => {
         fetchDashboardData();
+    }, [user]);
+
+    // Listen for payment success to refresh dashboard
+    useEffect(() => {
+        if (user) {
+            console.log('Setting up payment:success listener for user:', user.id);
+
+            socketService.on('payment:success', (data) => {
+                console.log('✅ Payment success event received:', data);
+                fetchDashboardData();
+                toast.success('Payment completed successfully!');
+            });
+
+            // Also listen for generic auction updates
+            socketService.on('auction:updated', (data) => {
+                console.log('📢 Auction updated event received:', data);
+                fetchDashboardData();
+            });
+
+            // Polling fallback - refresh every 30 seconds to catch any missed updates
+            const pollInterval = setInterval(() => {
+                console.log('🔄 Polling dashboard data...');
+                fetchDashboardData();
+            }, 30000); // 30 seconds
+
+            return () => {
+                socketService.off('payment:success');
+                socketService.off('auction:updated');
+                clearInterval(pollInterval);
+            };
+        }
     }, [user]);
 
     const fetchDashboardData = async () => {
