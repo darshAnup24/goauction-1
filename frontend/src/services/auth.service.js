@@ -25,9 +25,17 @@ const authService = {
 
   // Logout
   async logout() {
-    await apiClient.post(API_CONFIG.ENDPOINTS.LOGOUT);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    try {
+      // Try to call backend logout, but don't fail if it doesn't work
+      await apiClient.post(API_CONFIG.ENDPOINTS.LOGOUT);
+    } catch (error) {
+      // Ignore error - logout works client-side with JWT
+      console.log('Backend logout call failed, proceeding with client-side logout');
+    } finally {
+      // Always clear local storage regardless of backend call
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
   },
 
   // Verify email
