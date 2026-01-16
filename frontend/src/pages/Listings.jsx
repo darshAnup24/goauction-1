@@ -168,6 +168,7 @@ const Listings = () => {
                                     <option value="LIVE">Live Auctions</option>
                                     <option value="ENDING-SOON">Ending Soon</option>
                                     <option value="UPCOMING">Upcoming</option>
+                                    <option value="ENDED">Ended Auctions</option>
                                     <option value="ALL">All</option>
                                 </select>
                             </div>

@@ -2,11 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { CheckCircle, Package, Home, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
+import apiClient from '../services/api.service';
+import API_CONFIG from '../config/api.config';
 
 const PaymentSuccess = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const [countdown, setCountdown] = useState(5);
+    const [completing, setCompleting] = useState(true);
     const sessionId = searchParams.get('session_id');
     const listingId = searchParams.get('listing');
 
@@ -16,6 +19,9 @@ const PaymentSuccess = () => {
             navigate('/');
             return;
         }
+
+        // Complete the payment on the backend
+        completePayment();
 
         // Countdown timer - redirect to Orders page
         const timer = setInterval(() => {
@@ -31,6 +37,20 @@ const PaymentSuccess = () => {
 
         return () => clearInterval(timer);
     }, [sessionId, listingId, navigate]);
+
+    const completePayment = async () => {
+        try {
+            await apiClient.post(`${API_CONFIG.ENDPOINTS.PAYMENTS}/complete`, {
+                sessionId
+            });
+            setCompleting(false);
+            toast.success('Payment confirmed!');
+        } catch (error) {
+            console.error('Error completing payment:', error);
+            // Payment might already be completed via webhook, so don't show error
+            setCompleting(false);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 flex items-center justify-center p-4">

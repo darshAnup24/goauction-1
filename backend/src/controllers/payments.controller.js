@@ -147,17 +147,27 @@ class PaymentsController {
         try {
             const { listingId, buyerId, sellerId } = session.metadata;
 
-            // Update payment record
-            const payment = await prisma.payment.update({
+            // Find payment record by session ID
+            const payment = await prisma.payment.findFirst({
                 where: { stripePaymentIntentId: session.id },
-                data: {
-                    status: 'succeeded',
-                    paidAt: new Date()
-                },
                 include: {
                     buyer: true,
                     seller: true,
                     listing: true
+                }
+            });
+
+            if (!payment) {
+                console.error('Payment not found for session:', session.id);
+                return;
+            }
+
+            // Update payment record
+            await prisma.payment.update({
+                where: { id: payment.id },
+                data: {
+                    status: 'succeeded',
+                    paidAt: new Date()
                 }
             });
 
@@ -556,6 +566,107 @@ class PaymentsController {
             });
         } catch (error) {
             console.error('Checkout session error:', error);
+            next(error);
+        }
+    }
+
+    // Manual payment completion (for testing when webhooks don't trigger)
+    async completePayment(req, res, next) {
+        try {
+            const { sessionId } = req.body;
+            const userId = req.user.id;
+
+            // Find payment by session ID
+            const payment = await prisma.payment.findFirst({
+                where: {
+                    stripePaymentIntentId: sessionId,
+                    buyerId: userId
+                },
+                include: {
+                    buyer: true,
+                    seller: true,
+                    listing: true
+                }
+            });
+
+            if (!payment) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Payment not found'
+                });
+            }
+
+            if (payment.status === 'succeeded') {
+                return res.json({
+                    success: true,
+                    message: 'Payment already completed',
+                    payment
+                });
+            }
+
+            // Update payment status
+            const updatedPayment = await prisma.payment.update({
+                where: { id: payment.id },
+                data: {
+                    status: 'succeeded',
+                    paidAt: new Date()
+                }
+            });
+
+            // Update listing status to SOLD
+            await prisma.listing.update({
+                where: { id: payment.listingId },
+                data: { status: 'SOLD' }
+            });
+
+            // Update winning bid status
+            await prisma.bid.updateMany({
+                where: {
+                    listingId: payment.listingId,
+                    status: 'WINNING'
+                },
+                data: { status: 'WON' }
+            });
+
+            // Create notification for seller
+            await prisma.notification.create({
+                data: {
+                    userId: payment.sellerId,
+                    type: 'PAYMENT_RECEIVED',
+                    message: `Payment of $${payment.amount.toFixed(2)} received for "${payment.listing.title}"`,
+                    link: `/listings/${payment.listingId}`,
+                    read: false
+                }
+            });
+
+            // Send emails
+            await emailService.sendPaymentReceivedEmail(
+                payment.buyer.email,
+                payment.buyer.name,
+                payment.listing.title,
+                payment.amount,
+                payment.id
+            );
+
+            // Emit socket events
+            socketService.emitToUser(payment.buyerId, 'payment:success', {
+                paymentId: payment.id,
+                listingId: payment.listingId
+            });
+
+            socketService.emitToUser(payment.sellerId, 'payment:received', {
+                paymentId: payment.id,
+                listingId: payment.listingId,
+                amount: payment.amount
+            });
+
+            res.json({
+                success: true,
+                message: 'Payment completed successfully',
+                payment: updatedPayment
+            });
+        } catch (error) {
+            console.error('Payment completion error:', error);
             next(error);
         }
     }

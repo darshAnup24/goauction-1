@@ -68,7 +68,7 @@ const Dashboard = () => {
             const listingsData = listingsResponse.data || listingsResponse.listings || listingsResponse || [];
             setMyListings(listingsData.slice(0, 5)); // Recent 5
 
-            // Fetch user's bids
+            // Fetch user's bids with payment information
             const bidsResponse = await bidsService.getMyBids();
             const bidsData = bidsResponse.data || bidsResponse.bids || bidsResponse || [];
             setMyBids(bidsData.slice(0, 5)); // Recent 5
@@ -282,7 +282,8 @@ const Dashboard = () => {
                                     if (!listing) return null;
 
                                     const isEnded = listing.status === 'ENDED' || listing.status === 'SOLD' || listing.status === 'UNSOLD';
-                                    const isPaid = listing.status === 'SOLD';
+                                    // Check if payment exists - listing has payment array or status is SOLD
+                                    const isPaid = listing.status === 'SOLD' || (listing.payments && listing.payments.length > 0 && listing.payments.some(p => p.status === 'succeeded'));
 
                                     // Check if this user is the winner
                                     // Winner is determined by having the highest bid (currentBid) on an ENDED auction

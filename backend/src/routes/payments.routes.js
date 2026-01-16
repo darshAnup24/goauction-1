@@ -11,7 +11,8 @@ router.use(authMiddleware);
 
 router.post('/create-checkout-session', paymentsController.createCheckoutSession);
 router.post('/create-intent', paymentsController.createPaymentIntent);
+router.post('/complete', paymentsController.completePayment); // Manual completion for testing
+router.get('/my-payments', paymentsController.getMyPayments); // Must come before /:id
 router.get('/:id', paymentsController.getPayment);
-router.get('/my-payments', paymentsController.getMyPayments);
 
 module.exports = router;

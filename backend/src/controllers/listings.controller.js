@@ -23,7 +23,7 @@ class ListingsController {
             const where = {};
             const now = new Date();
 
-            // Status filter
+            // Status filter - default to LIVE if not specified
             if (status) {
                 const statusUpper = status.toUpperCase();
                 if (statusUpper === 'ALL') {
@@ -42,6 +42,9 @@ class ListingsController {
                 } else if (['ENDED', 'SOLD', 'UNSOLD'].includes(statusUpper)) {
                     where.status = statusUpper;
                 }
+            } else {
+                // Default to LIVE status when no status filter is provided
+                where.status = 'LIVE';
             }
 
             // Category filter

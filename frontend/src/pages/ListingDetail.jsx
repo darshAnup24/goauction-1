@@ -86,6 +86,28 @@ const ListingDetail = () => {
 
   const uniqueBidders = new Set(listing.bids?.map(b => b.bidderId) || []).size;
 
+  // Calculate actual auction status based on time
+  const getDisplayStatus = () => {
+    const now = new Date();
+    const endTime = new Date(listing.endTime);
+    const startTime = new Date(listing.startTime);
+
+    // If auction has ended based on time, show ENDED regardless of DB status
+    if (endTime <= now) {
+      return listing.status === 'SOLD' || listing.status === 'UNSOLD' ? listing.status : 'ENDED';
+    }
+
+    // If auction should be live but DB says UPCOMING, show LIVE
+    if (startTime <= now && endTime > now && listing.status === 'UPCOMING') {
+      return 'LIVE';
+    }
+
+    return listing.status;
+  };
+
+  const displayStatus = getDisplayStatus();
+  const isReallyLive = displayStatus === 'LIVE';
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4">
@@ -116,12 +138,13 @@ const ListingDetail = () => {
                     </span>
                     <span className={`
                       px-3 py-1 text-sm font-bold rounded-full
-                      ${listing.status === 'LIVE' ? 'bg-green-100 text-green-800' : ''}
-                      ${listing.status === 'ENDED' ? 'bg-gray-100 text-gray-800' : ''}
-                      ${listing.status === 'SOLD' ? 'bg-purple-100 text-purple-800' : ''}
-                      ${listing.status === 'UPCOMING' ? 'bg-yellow-100 text-yellow-800' : ''}
+                      ${displayStatus === 'LIVE' ? 'bg-green-100 text-green-800' : ''}
+                      ${displayStatus === 'ENDED' ? 'bg-gray-100 text-gray-800' : ''}
+                      ${displayStatus === 'SOLD' ? 'bg-purple-100 text-purple-800' : ''}
+                      ${displayStatus === 'UNSOLD' ? 'bg-red-100 text-red-800' : ''}
+                      ${displayStatus === 'UPCOMING' ? 'bg-yellow-100 text-yellow-800' : ''}
                     `}>
-                      {listing.status}
+                      {displayStatus}
                     </span>
                   </div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -131,7 +154,7 @@ const ListingDetail = () => {
               </div>
 
               {/* Countdown Timer */}
-              {listing.status === 'LIVE' && (
+              {isReallyLive && (
                 <div className="mb-6">
                   <CountdownTimer
                     endTime={listing.endTime}

@@ -405,7 +405,15 @@ class BidsController {
                                 currentBid: true,
                                 status: true,
                                 endTime: true,
-                                startingPrice: true
+                                startingPrice: true,
+                                payments: {
+                                    select: {
+                                        id: true,
+                                        status: true,
+                                        amount: true,
+                                        paidAt: true
+                                    }
+                                }
                             }
                         }
                     },

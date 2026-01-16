@@ -48,12 +48,43 @@ class SchedulerService {
                 errors: []
             };
 
-            // 1. Start UPCOMING auctions that should be LIVE
+            // 1. Handle UPCOMING auctions that have already ended (startTime and endTime both passed)
+            // These should go straight to UNSOLD since they never went LIVE
+            const upcomingExpired = await prisma.listing.findMany({
+                where: {
+                    status: 'UPCOMING',
+                    endTime: {
+                        lte: now
+                    }
+                }
+            });
+
+            for (const listing of upcomingExpired) {
+                try {
+                    await prisma.listing.update({
+                        where: { id: listing.id },
+                        data: { status: 'UNSOLD' }
+                    });
+                    results.unsold++;
+                    console.log(`🔴 Auction "${listing.title}" expired while UPCOMING - marked as UNSOLD`);
+                } catch (error) {
+                    console.error(`Error processing expired upcoming listing ${listing.id}:`, error);
+                    results.errors.push({
+                        listingId: listing.id,
+                        error: error.message
+                    });
+                }
+            }
+
+            // 2. Start UPCOMING auctions that should be LIVE (startTime passed but endTime not yet passed)
             const upcomingToLive = await prisma.listing.updateMany({
                 where: {
                     status: 'UPCOMING',
                     startTime: {
                         lte: now
+                    },
+                    endTime: {
+                        gt: now
                     }
                 },
                 data: {
@@ -67,7 +98,7 @@ class SchedulerService {
                 console.log(`🟢 Started ${upcomingToLive.count} auction(s)`);
             }
 
-            // 2. End LIVE auctions that have passed their end time
+            // 3. End LIVE auctions that have passed their end time
             const endedAuctions = await prisma.listing.findMany({
                 where: {
                     status: 'LIVE',
