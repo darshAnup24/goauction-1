@@ -30,7 +30,7 @@ const verifyEmailSchema = {
 // Routes
 router.post('/register', validate(registerSchema), authController.register);
 router.post('/login', validate(loginSchema), authController.login);
-router.post('/logout', authMiddleware, authController.logout);
+router.post('/logout', authController.logout); // No auth required - client-side token removal
 router.post('/verify-email', validate(verifyEmailSchema), authController.verifyEmail);
 router.post('/forgot-password', authController.forgotPassword);
 router.post('/reset-password', authController.resetPassword);
