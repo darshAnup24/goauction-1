@@ -78,9 +78,22 @@ const Dashboard = () => {
             const soldListings = listingsData.filter(l => l.status === 'SOLD');
             const revenue = soldListings.reduce((sum, l) => sum + (l.currentBid || 0), 0);
 
-            const wonAuctions = bidsData.filter(b =>
-                b.listing?.status === 'SOLD' && b.listing?.winnerId === user.id
-            ).length;
+            // Auctions the user has effectively won (ended and they are winner/top bidder)
+            const wonAuctions = bidsData.filter((b) => {
+                const listing = b.listing;
+                if (!listing) return false;
+
+                const isEnded = ['ENDED', 'SOLD', 'UNSOLD'].includes(listing.status);
+
+                const hasWinnerFlag = listing.winnerId && listing.winnerId === user.id;
+
+                const hasHighestBid =
+                    typeof listing.currentBid === 'number' &&
+                    typeof b.amount === 'number' &&
+                    listing.currentBid.toFixed(2) === b.amount.toFixed(2);
+
+                return isEnded && (hasWinnerFlag || hasHighestBid);
+            }).length;
 
             const activeParticipation = bidsData.filter(b =>
                 b.listing?.status === 'LIVE'
@@ -107,6 +120,17 @@ const Dashboard = () => {
     const calculateTimeLeft = (endTime) => {
         const diff = new Date(endTime) - new Date();
         if (diff <= 0) return 'Ended';
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+        if (days > 0) return `${days}d ${hours}h`;
+        return `${hours}h`;
+    };
+
+    const calculateTimeToStart = (startTime) => {
+        const diff = new Date(startTime) - new Date();
+        if (diff <= 0) return 'Started';
 
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -248,6 +272,12 @@ const Dashboard = () => {
                                                     <span className="text-gray-500 flex items-center gap-1">
                                                         <Clock className="w-4 h-4" />
                                                         {calculateTimeLeft(listing.endTime)}
+                                                    </span>
+                                                )}
+                                                {listing.status === 'UPCOMING' && listing.startTime && (
+                                                    <span className="text-gray-500 flex items-center gap-1">
+                                                        <Clock className="w-4 h-4" />
+                                                        Starts in {calculateTimeToStart(listing.startTime)}
                                                     </span>
                                                 )}
                                             </div>

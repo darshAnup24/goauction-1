@@ -140,7 +140,11 @@ class BidsController {
                             select: {
                                 id: true,
                                 title: true,
-                                images: true,
+                                images: {
+                                    select: {
+                                        imageUrl: true
+                                    }
+                                },
                                 endTime: true,
                                 sellerId: true
                             }
@@ -393,7 +397,7 @@ class BidsController {
 
             const skip = (parseInt(page) - 1) * parseInt(limit);
 
-            const [bids, total] = await Promise.all([
+            const [bidsRaw, total] = await Promise.all([
                 prisma.bid.findMany({
                     where,
                     include: {
@@ -401,7 +405,11 @@ class BidsController {
                             select: {
                                 id: true,
                                 title: true,
-                                images: true,
+                                images: {
+                                    select: {
+                                        imageUrl: true
+                                    }
+                                },
                                 currentBid: true,
                                 status: true,
                                 endTime: true,
@@ -423,6 +431,16 @@ class BidsController {
                 }),
                 prisma.bid.count({ where })
             ]);
+
+            const bids = bidsRaw.map((bid) => ({
+                ...bid,
+                listing: bid.listing
+                    ? {
+                        ...bid.listing,
+                        images: bid.listing.images.map((img) => img.imageUrl)
+                    }
+                    : null
+            }));
 
             res.json({
                 success: true,

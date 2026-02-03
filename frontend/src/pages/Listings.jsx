@@ -107,6 +107,19 @@ const Listings = () => {
         return `${minutes}m`;
     };
 
+    const calculateTimeToStart = (startTime) => {
+        const diff = new Date(startTime) - new Date();
+        if (diff <= 0) return 'Started';
+
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+        if (days > 0) return `${days}d ${hours}h`;
+        if (hours > 0) return `${hours}h ${minutes}m`;
+        return `${minutes}m`;
+    };
+
     if (loading && filters.page === 1) {
         return <Loading fullScreen />;
     }
@@ -290,10 +303,15 @@ const Listings = () => {
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-xs text-gray-500 mb-1">Time Left</p>
+                                            <p className="text-xs text-gray-500 mb-1">
+                                                {listing.status === 'UPCOMING' ? 'Starts In' : 'Time Left'}
+                                            </p>
                                             <p className="text-sm font-semibold text-gray-900 flex items-center gap-1">
                                                 <Clock className="w-4 h-4" />
-                                                {calculateTimeLeft(listing.endTime)}
+                                                {listing.status === 'UPCOMING' && listing.startTime
+                                                    ? calculateTimeToStart(listing.startTime)
+                                                    : calculateTimeLeft(listing.endTime)
+                                                }
                                             </p>
                                         </div>
                                     </div>

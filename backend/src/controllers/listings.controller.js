@@ -124,7 +124,7 @@ class ListingsController {
             }
 
             // Fetch listings and total count
-            const [listings, total] = await Promise.all([
+            const [listingsRaw, total] = await Promise.all([
                 prisma.listing.findMany({
                     where,
                     include: {
@@ -138,6 +138,8 @@ class ListingsController {
                                 totalRatings: true
                             }
                         },
+                        images: true,
+                        videos: true,
                         _count: {
                             select: {
                                 bids: true
@@ -150,6 +152,13 @@ class ListingsController {
                 }),
                 prisma.listing.count({ where })
             ]);
+
+            const listings = listingsRaw.map((listing) => ({
+                ...listing,
+                images: listing.images.map((img) => img.imageUrl),
+                videos: listing.videos.map((vid) => vid.videoUrl),
+                bidCount: listing._count.bids
+            }));
 
             res.json({
                 success: true,
@@ -212,6 +221,8 @@ class ListingsController {
                             }
                         }
                     },
+                    images: true,
+                    videos: true,
                     _count: {
                         select: {
                             bids: true
@@ -246,6 +257,8 @@ class ListingsController {
                 success: true,
                 listing: {
                     ...listing,
+                    images: listing.images.map((img) => img.imageUrl),
+                    videos: listing.videos.map((vid) => vid.videoUrl),
                     highestBid,
                     bidCount: listing._count.bids,
                     timeRemaining: Math.max(0, timeRemaining),
@@ -327,13 +340,19 @@ class ListingsController {
             console.log('Creating listing with:', { title, start, end, status, durationHours });
 
             // Create listing
+            // Prepare media data for relational tables
+            const imageData = Array.isArray(images)
+                ? images.map((url) => ({ imageUrl: url }))
+                : [];
+            const videoData = Array.isArray(videos)
+                ? videos.map((url) => ({ videoUrl: url }))
+                : [];
+
             const listing = await prisma.listing.create({
                 data: {
                     title,
                     description,
                     category,
-                    images: images || [],
-                    videos: videos || [],
                     startingPrice: parseFloat(startingPrice),
                     reservePrice: reservePrice ? parseFloat(reservePrice) : null,
                     buyNowPrice: buyNowPrice ? parseFloat(buyNowPrice) : null,
@@ -342,7 +361,13 @@ class ListingsController {
                     endTime: end,
                     duration: durationHours,
                     status,
-                    sellerId: userId
+                    sellerId: userId,
+                    images: {
+                        create: imageData
+                    },
+                    videos: {
+                        create: videoData
+                    }
                 },
                 include: {
                     seller: {
@@ -352,17 +377,26 @@ class ListingsController {
                             name: true,
                             image: true
                         }
-                    }
+                    },
+                    images: true,
+                    videos: true
                 }
             });
 
+            // Flatten media relations to simple URL arrays in response
+            const responseListing = {
+                ...listing,
+                images: listing.images.map((img) => img.imageUrl),
+                videos: listing.videos.map((vid) => vid.videoUrl)
+            };
+
             // Emit new listing event
-            socketService.broadcastToAll('newListing', listing);
+            socketService.broadcastToAll('newListing', responseListing);
 
             res.status(201).json({
                 success: true,
                 message: 'Listing created successfully',
-                listing
+                listing: responseListing
             });
         } catch (error) {
             next(error);
@@ -434,8 +468,6 @@ class ListingsController {
             if (title !== undefined) updateData.title = title;
             if (description !== undefined) updateData.description = description;
             if (category !== undefined) updateData.category = category;
-            if (images !== undefined) updateData.images = images;
-            if (videos !== undefined) updateData.videos = videos;
             if (startingPrice !== undefined) {
                 updateData.startingPrice = parseFloat(startingPrice);
                 updateData.currentBid = parseFloat(startingPrice);
@@ -457,25 +489,75 @@ class ListingsController {
                 }
             }
 
-            const updatedListing = await prisma.listing.update({
-                where: { id },
-                data: updateData,
-                include: {
-                    seller: {
-                        select: {
-                            id: true,
-                            username: true,
-                            name: true,
-                            image: true
-                        }
+            // Perform update and handle media relations separately
+            const updatedListing = await prisma.$transaction(async (tx) => {
+                // Update main listing fields
+                const baseListing = await tx.listing.update({
+                    where: { id },
+                    data: updateData,
+                    include: {
+                        seller: {
+                            select: {
+                                id: true,
+                                username: true,
+                                name: true,
+                                image: true
+                            }
+                        },
+                        images: true,
+                        videos: true
+                    }
+                });
+
+                // Replace images if provided
+                if (images !== undefined && Array.isArray(images)) {
+                    await tx.listingImage.deleteMany({ where: { listingId: id } });
+                    if (images.length > 0) {
+                        await tx.listingImage.createMany({
+                            data: images.map((url) => ({ listingId: id, imageUrl: url }))
+                        });
                     }
                 }
+
+                // Replace videos if provided
+                if (videos !== undefined && Array.isArray(videos)) {
+                    await tx.listingVideo.deleteMany({ where: { listingId: id } });
+                    if (videos.length > 0) {
+                        await tx.listingVideo.createMany({
+                            data: videos.map((url) => ({ listingId: id, videoUrl: url }))
+                        });
+                    }
+                }
+
+                const finalListing = await tx.listing.findUnique({
+                    where: { id },
+                    include: {
+                        seller: {
+                            select: {
+                                id: true,
+                                username: true,
+                                name: true,
+                                image: true
+                            }
+                        },
+                        images: true,
+                        videos: true
+                    }
+                });
+
+                return finalListing;
             });
+
+            const responseListing = {
+                ...updatedListing,
+                images: updatedListing.images.map((img) => img.imageUrl),
+                videos: updatedListing.videos.map((vid) => vid.videoUrl)
+            };
 
             res.json({
                 success: true,
                 message: 'Listing updated successfully',
-                listing: updatedListing
+                listing: responseListing
             });
         } catch (error) {
             next(error);
@@ -520,26 +602,30 @@ class ListingsController {
                 });
             }
 
-            // Delete images from S3
-            if (listing.images && listing.images.length > 0) {
-                for (const imageUrl of listing.images) {
+            // Delete images from S3 and DB
+            const listingImages = await prisma.listingImage.findMany({ where: { listingId: id } });
+            if (listingImages && listingImages.length > 0) {
+                for (const img of listingImages) {
                     try {
-                        await s3Service.deleteImage(imageUrl);
+                        await s3Service.deleteImage(img.imageUrl);
                     } catch (err) {
                         console.error('Error deleting image:', err);
                     }
                 }
+                await prisma.listingImage.deleteMany({ where: { listingId: id } });
             }
 
-            // Delete videos from S3
-            if (listing.videos && listing.videos.length > 0) {
-                for (const videoUrl of listing.videos) {
+            // Delete videos from S3 and DB
+            const listingVideos = await prisma.listingVideo.findMany({ where: { listingId: id } });
+            if (listingVideos && listingVideos.length > 0) {
+                for (const vid of listingVideos) {
                     try {
-                        await s3Service.deleteVideo(videoUrl);
+                        await s3Service.deleteVideo(vid.videoUrl);
                     } catch (err) {
                         console.error('Error deleting video:', err);
                     }
                 }
+                await prisma.listingVideo.deleteMany({ where: { listingId: id } });
             }
 
             await prisma.listing.delete({
@@ -568,10 +654,12 @@ class ListingsController {
 
             const skip = (parseInt(page) - 1) * parseInt(limit);
 
-            const [listings, total] = await Promise.all([
+            const [listingsRaw, total] = await Promise.all([
                 prisma.listing.findMany({
                     where,
                     include: {
+                        images: true,
+                        videos: true,
                         _count: {
                             select: {
                                 bids: true
@@ -584,6 +672,13 @@ class ListingsController {
                 }),
                 prisma.listing.count({ where })
             ]);
+
+            const listings = listingsRaw.map((listing) => ({
+                ...listing,
+                images: listing.images.map((img) => img.imageUrl),
+                videos: listing.videos.map((vid) => vid.videoUrl),
+                bidCount: listing._count.bids
+            }));
 
             res.json({
                 success: true,

@@ -63,6 +63,14 @@ const ListingDetail = () => {
     }));
   }, []);
 
+  const handleAuctionStart = useCallback(() => {
+    toast.success('Auction has started!');
+    setListing((prev) => ({
+      ...prev,
+      status: 'LIVE'
+    }));
+  }, []);
+
   if (loading) {
     return <Loading />;
   }
@@ -107,6 +115,7 @@ const ListingDetail = () => {
 
   const displayStatus = getDisplayStatus();
   const isReallyLive = displayStatus === 'LIVE';
+  const isUpcoming = displayStatus === 'UPCOMING';
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -159,6 +168,16 @@ const ListingDetail = () => {
                   <CountdownTimer
                     endTime={listing.endTime}
                     onExpire={handleAuctionExpire}
+                    size="lg"
+                  />
+                </div>
+              )}
+
+              {isUpcoming && (
+                <div className="mb-6">
+                  <CountdownTimer
+                    endTime={listing.startTime}
+                    onExpire={handleAuctionStart}
                     size="lg"
                   />
                 </div>

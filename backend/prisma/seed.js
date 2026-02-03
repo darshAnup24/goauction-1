@@ -8,6 +8,7 @@ async function main() {
 
     // Clear existing data
     console.log('🗑️  Clearing existing data...');
+    await prisma.rating.deleteMany();
     await prisma.notification.deleteMany();
     await prisma.payment.deleteMany();
     await prisma.bid.deleteMany();
@@ -15,100 +16,101 @@ async function main() {
     await prisma.user.deleteMany();
     console.log('✅ Existing data cleared\n');
 
-    // Hash password for all users
+    // Hash passwords
     const hashedPassword = await bcrypt.hash('password123', 10);
-    const testUserPassword = await bcrypt.hash('22446688', 10);
 
     // Create users
     console.log('👥 Creating users...');
-    const users = await Promise.all([
-        prisma.user.create({
-            data: {
-                name: 'Darshan Chavan',
-                email: 'chavandarshan24@gmail.com',
-                username: 'darshanchavan',
-                password: testUserPassword,
-                role: 'BUYER',
-                emailVerified: new Date(),
-                phone: '+919876543210',
-                address: '123 Test Street, Mumbai, India'
-            }
-        }),
-        prisma.user.create({
-            data: {
-                name: 'John Doe',
-                email: 'john@example.com',
-                username: 'johndoe',
-                password: hashedPassword,
-                role: 'BUYER',
-                emailVerified: new Date(),
-                phone: '+1234567890',
-                address: '123 Main St, New York, NY 10001'
-            }
-        }),
-        prisma.user.create({
-            data: {
-                name: 'Jane Smith',
-                email: 'jane@example.com',
-                username: 'janesmith',
-                password: hashedPassword,
-                role: 'SELLER',
-                isVendor: true,
-                emailVerified: new Date(),
-                phone: '+1234567891',
-                address: '456 Oak Ave, Los Angeles, CA 90001',
-                rating: 4.8,
-                totalRatings: 25
-            }
-        }),
-        prisma.user.create({
-            data: {
-                name: 'Mike Johnson',
-                email: 'mike@example.com',
-                username: 'mikej',
-                password: hashedPassword,
-                role: 'VENDOR',
-                isVendor: true,
-                emailVerified: new Date(),
-                phone: '+1234567892',
-                address: '789 Pine Rd, Chicago, IL 60601',
-                rating: 4.5,
-                totalRatings: 18
-            }
-        }),
-        prisma.user.create({
-            data: {
-                name: 'Sarah Williams',
-                email: 'sarah@example.com',
-                username: 'sarahw',
-                password: hashedPassword,
-                role: 'BUYER',
-                emailVerified: new Date(),
-                phone: '+1234567893',
-                address: '321 Elm St, Houston, TX 77001'
-            }
-        }),
-        prisma.user.create({
-            data: {
-                name: 'Admin User',
-                email: 'admin@example.com',
-                username: 'admin',
-                password: hashedPassword,
-                role: 'ADMIN',
-                emailVerified: new Date()
-            }
-        })
-    ]);
-    console.log(`✅ Created ${users.length} users\n`);
+    
+    const john = await prisma.user.create({
+        data: {
+            name: 'John Doe',
+            email: 'chavandarshan24@gmail.com',
+            username: 'john',
+            password: hashedPassword,
+            role: 'BUYER',
+            isVendor: true,
+            emailVerified: new Date(),
+            phone: '+1234567890',
+            address: '123 Main St, New York, NY 10001',
+            rating: 4.5,
+            totalRatings: 10
+        }
+    });
 
-    const [darshan, john, jane, mike, sarah, admin] = users;
+    const alice = await prisma.user.create({
+        data: {
+            name: 'Alice Johnson',
+            email: 'alice@example.com',
+            username: 'alice',
+            password: hashedPassword,
+            role: 'BUYER',
+            isVendor: true,
+            emailVerified: new Date(),
+            phone: '+1234567891',
+            address: '456 Oak Ave, Los Angeles, CA 90001',
+            rating: 4.8,
+            totalRatings: 25
+        }
+    });
+
+    const bob = await prisma.user.create({
+        data: {
+            name: 'Bob Smith',
+            email: 'bob@example.com',
+            username: 'bob',
+            password: hashedPassword,
+            role: 'BUYER',
+            isVendor: true,
+            emailVerified: new Date(),
+            phone: '+1234567892',
+            address: '789 Pine Rd, Chicago, IL 60601',
+            rating: 4.2,
+            totalRatings: 15
+        }
+    });
+
+    const carol = await prisma.user.create({
+        data: {
+            name: 'Carol Williams',
+            email: 'carol@example.com',
+            username: 'carol',
+            password: hashedPassword,
+            role: 'BUYER',
+            isVendor: true,
+            emailVerified: new Date(),
+            phone: '+1234567893',
+            address: '321 Elm St, Houston, TX 77001',
+            rating: 4.6,
+            totalRatings: 18
+        }
+    });
+
+    console.log(`✅ Created 4 users\n`);
 
     // Create listings
     console.log('📦 Creating listings...');
     const now = new Date();
     
+    // Tomorrow's times (Feb 4, 2026)
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    
+    const tomorrow11am = new Date(tomorrow);
+    tomorrow11am.setHours(11, 0, 0, 0);
+    
+    const tomorrow12pm = new Date(tomorrow);
+    tomorrow12pm.setHours(12, 0, 0, 0);
+    
+    const tomorrow1pm = new Date(tomorrow);
+    tomorrow1pm.setHours(13, 0, 0, 0);
+    
+    const tomorrow2pm = new Date(tomorrow);
+    tomorrow2pm.setHours(14, 0, 0, 0);
+
     const listings = await Promise.all([
-        // Live auctions
+        // ============ LIVE AUCTIONS (ending tomorrow) ============
+        // Listing by Alice - ends tomorrow 11am
         prisma.listing.create({
             data: {
                 title: 'Vintage Rolex Submariner Watch',
@@ -120,16 +122,17 @@ async function main() {
                 category: 'Watches',
                 startingPrice: 5000,
                 reservePrice: 8000,
-                currentBid: 5500,
-                startTime: new Date(now.getTime() - 2 * 60 * 60 * 1000), // Started 2 hours ago
-                endTime: new Date(now.getTime() + 22 * 60 * 60 * 1000), // Ends in 22 hours
+                currentBid: 6200,
+                startTime: new Date(now.getTime() - 20 * 60 * 60 * 1000),
+                endTime: tomorrow11am,
                 duration: 24,
                 status: 'LIVE',
-                sellerId: jane.id,
-                bidCount: 3,
-                viewCount: 45
+                sellerId: alice.id,
+                bidCount: 8,
+                viewCount: 145
             }
         }),
+        // Listing by Bob - ends tomorrow 12pm
         prisma.listing.create({
             data: {
                 title: 'MacBook Pro 16" M3 Max',
@@ -140,16 +143,17 @@ async function main() {
                 ],
                 category: 'Electronics',
                 startingPrice: 2500,
-                currentBid: 2800,
-                startTime: new Date(now.getTime() - 5 * 60 * 60 * 1000),
-                endTime: new Date(now.getTime() + 19 * 60 * 60 * 1000),
+                currentBid: 3100,
+                startTime: new Date(now.getTime() - 18 * 60 * 60 * 1000),
+                endTime: tomorrow12pm,
                 duration: 24,
                 status: 'LIVE',
-                sellerId: mike.id,
-                bidCount: 5,
-                viewCount: 78
+                sellerId: bob.id,
+                bidCount: 12,
+                viewCount: 210
             }
         }),
+        // Listing by Carol - ends tomorrow 1pm
         prisma.listing.create({
             data: {
                 title: 'Antique Persian Rug',
@@ -160,18 +164,58 @@ async function main() {
                 category: 'Home & Garden',
                 startingPrice: 1200,
                 reservePrice: 1800,
-                currentBid: 1400,
-                startTime: new Date(now.getTime() - 1 * 60 * 60 * 1000),
-                endTime: new Date(now.getTime() + 47 * 60 * 60 * 1000),
-                duration: 48,
+                currentBid: 1650,
+                startTime: new Date(now.getTime() - 15 * 60 * 60 * 1000),
+                endTime: tomorrow1pm,
+                duration: 24,
                 status: 'LIVE',
-                sellerId: jane.id,
-                bidCount: 2,
-                viewCount: 32
+                sellerId: carol.id,
+                bidCount: 6,
+                viewCount: 89
             }
         }),
-        
-        // Upcoming auctions
+        // Listing by Alice - ends tomorrow 2pm
+        prisma.listing.create({
+            data: {
+                title: 'Gaming PC - RTX 4090, i9-13900K',
+                description: 'High-end gaming PC built 6 months ago. RTX 4090, Intel i9-13900K, 64GB RAM, 2TB NVMe.',
+                images: [
+                    'https://images.unsplash.com/photo-1587202372634-32705e3bf49c'
+                ],
+                category: 'Electronics',
+                startingPrice: 2000,
+                currentBid: 2850,
+                startTime: new Date(now.getTime() - 22 * 60 * 60 * 1000),
+                endTime: tomorrow2pm,
+                duration: 24,
+                status: 'LIVE',
+                sellerId: alice.id,
+                bidCount: 10,
+                viewCount: 178
+            }
+        }),
+        // Listing by Bob - ends tomorrow 11am
+        prisma.listing.create({
+            data: {
+                title: 'Fender Stratocaster Electric Guitar',
+                description: 'Classic Sunburst Fender Stratocaster, American made, with hard case.',
+                images: [
+                    'https://images.unsplash.com/photo-1510915361894-db8b60106cb1'
+                ],
+                category: 'Musical Instruments',
+                startingPrice: 800,
+                currentBid: 1150,
+                startTime: new Date(now.getTime() - 16 * 60 * 60 * 1000),
+                endTime: tomorrow11am,
+                duration: 24,
+                status: 'LIVE',
+                sellerId: bob.id,
+                bidCount: 7,
+                viewCount: 95
+            }
+        }),
+
+        // ============ UPCOMING AUCTIONS ============
         prisma.listing.create({
             data: {
                 title: 'Sony A7 IV Camera with 24-70mm Lens',
@@ -182,13 +226,13 @@ async function main() {
                 category: 'Electronics',
                 startingPrice: 1800,
                 reservePrice: 2200,
-                currentBid: 1800,
-                startTime: new Date(now.getTime() + 2 * 60 * 60 * 1000), // Starts in 2 hours
-                endTime: new Date(now.getTime() + 26 * 60 * 60 * 1000),
+                currentBid: 0,
+                startTime: new Date(now.getTime() + 4 * 60 * 60 * 1000),
+                endTime: new Date(now.getTime() + 28 * 60 * 60 * 1000),
                 duration: 24,
                 status: 'UPCOMING',
-                sellerId: mike.id,
-                viewCount: 15
+                sellerId: carol.id,
+                viewCount: 45
             }
         }),
         prisma.listing.create({
@@ -200,78 +244,17 @@ async function main() {
                 ],
                 category: 'Fashion',
                 startingPrice: 300,
-                currentBid: 300,
-                startTime: new Date(now.getTime() + 4 * 60 * 60 * 1000),
-                endTime: new Date(now.getTime() + 28 * 60 * 60 * 1000),
+                currentBid: 0,
+                startTime: new Date(now.getTime() + 6 * 60 * 60 * 1000),
+                endTime: new Date(now.getTime() + 30 * 60 * 60 * 1000),
                 duration: 24,
                 status: 'UPCOMING',
-                sellerId: jane.id,
-                viewCount: 28
+                sellerId: alice.id,
+                viewCount: 67
             }
         }),
 
-        // Ending soon
-        prisma.listing.create({
-            data: {
-                title: 'Gaming PC - RTX 4090, i9-13900K',
-                description: 'High-end gaming PC built 6 months ago. RTX 4090, Intel i9-13900K, 64GB RAM, 2TB NVMe.',
-                images: [
-                    'https://images.unsplash.com/photo-1587202372634-32705e3bf49c'
-                ],
-                category: 'Electronics',
-                startingPrice: 2000,
-                currentBid: 2600,
-                startTime: new Date(now.getTime() - 22 * 60 * 60 * 1000),
-                endTime: new Date(now.getTime() + 2 * 60 * 60 * 1000), // Ends in 2 hours
-                duration: 24,
-                status: 'LIVE',
-                sellerId: mike.id,
-                bidCount: 8,
-                viewCount: 120
-            }
-        }),
-
-        // More listings
-        prisma.listing.create({
-            data: {
-                title: 'Fender Stratocaster Electric Guitar',
-                description: 'Classic Sunburst Fender Stratocaster, American made, with hard case.',
-                images: [
-                    'https://images.unsplash.com/photo-1510915361894-db8b60106cb1'
-                ],
-                category: 'Musical Instruments',
-                startingPrice: 800,
-                currentBid: 950,
-                startTime: new Date(now.getTime() - 10 * 60 * 60 * 1000),
-                endTime: new Date(now.getTime() + 14 * 60 * 60 * 1000),
-                duration: 24,
-                status: 'LIVE',
-                sellerId: jane.id,
-                bidCount: 4,
-                viewCount: 56
-            }
-        }),
-        prisma.listing.create({
-            data: {
-                title: 'Vintage Leather Armchair',
-                description: 'Mid-century modern leather armchair in cognac color. Minor patina adds character.',
-                images: [
-                    'https://images.unsplash.com/photo-1567538096630-e0c55bd6374c'
-                ],
-                category: 'Furniture',
-                startingPrice: 400,
-                currentBid: 550,
-                startTime: new Date(now.getTime() - 15 * 60 * 60 * 1000),
-                endTime: new Date(now.getTime() + 33 * 60 * 60 * 1000),
-                duration: 48,
-                status: 'LIVE',
-                sellerId: mike.id,
-                bidCount: 6,
-                viewCount: 42
-            }
-        }),
-
-        // ENDED AUCTIONS - Test user WON these and needs to PAY
+        // ============ ENDED AUCTIONS - JOHN WON (needs to pay) ============
         prisma.listing.create({
             data: {
                 title: 'Acoustic Guitar - Martin D-28',
@@ -284,12 +267,13 @@ async function main() {
                 startingPrice: 1000,
                 currentBid: 1450,
                 startTime: new Date(now.getTime() - 48 * 60 * 60 * 1000),
-                endTime: new Date(now.getTime() - 1 * 60 * 60 * 1000), // Ended 1 hour ago
+                endTime: new Date(now.getTime() - 1 * 60 * 60 * 1000),
                 duration: 48,
                 status: 'ENDED',
-                sellerId: jane.id,
+                sellerId: alice.id,
+                winnerId: john.id,
                 bidCount: 8,
-                viewCount: 95
+                viewCount: 125
             }
         }),
         prisma.listing.create({
@@ -304,12 +288,75 @@ async function main() {
                 startingPrice: 800,
                 currentBid: 1100,
                 startTime: new Date(now.getTime() - 72 * 60 * 60 * 1000),
-                endTime: new Date(now.getTime() - 3 * 60 * 60 * 1000), // Ended 3 hours ago
+                endTime: new Date(now.getTime() - 2 * 60 * 60 * 1000),
                 duration: 72,
                 status: 'ENDED',
-                sellerId: mike.id,
+                sellerId: bob.id,
+                winnerId: john.id,
+                bidCount: 15,
+                viewCount: 198
+            }
+        }),
+        prisma.listing.create({
+            data: {
+                title: 'Canon EOS R5 Camera Body',
+                description: 'Professional mirrorless camera, excellent condition with low shutter count.',
+                images: [
+                    'https://images.unsplash.com/photo-1516035069371-29a1b244cc32'
+                ],
+                category: 'Electronics',
+                startingPrice: 2500,
+                currentBid: 2950,
+                startTime: new Date(now.getTime() - 50 * 60 * 60 * 1000),
+                endTime: new Date(now.getTime() - 3 * 60 * 60 * 1000),
+                duration: 48,
+                status: 'ENDED',
+                sellerId: carol.id,
+                winnerId: john.id,
+                bidCount: 11,
+                viewCount: 167
+            }
+        }),
+        prisma.listing.create({
+            data: {
+                title: 'DJI Mavic 3 Pro Drone',
+                description: 'Brand new DJI Mavic 3 Pro with Fly More combo. Never flown, sealed box.',
+                images: [
+                    'https://images.unsplash.com/photo-1473968512647-3e447244af8f'
+                ],
+                category: 'Electronics',
+                startingPrice: 1500,
+                currentBid: 1850,
+                startTime: new Date(now.getTime() - 60 * 60 * 60 * 1000),
+                endTime: new Date(now.getTime() - 4 * 60 * 60 * 1000),
+                duration: 48,
+                status: 'ENDED',
+                sellerId: alice.id,
+                winnerId: john.id,
+                bidCount: 9,
+                viewCount: 143
+            }
+        }),
+
+        // ============ SOLD AUCTIONS (payment completed) ============
+        prisma.listing.create({
+            data: {
+                title: 'PlayStation 5 Console',
+                description: 'PS5 disc version, lightly used with two controllers and 5 games.',
+                images: [
+                    'https://images.unsplash.com/photo-1606813907291-d86efa9b94db'
+                ],
+                category: 'Electronics',
+                startingPrice: 350,
+                currentBid: 475,
+                startTime: new Date(now.getTime() - 96 * 60 * 60 * 1000),
+                endTime: new Date(now.getTime() - 48 * 60 * 60 * 1000),
+                duration: 48,
+                status: 'SOLD',
+                sellerId: bob.id,
+                winnerId: john.id,
                 bidCount: 12,
-                viewCount: 156
+                viewCount: 189
             }
         }),
         prisma.listing.create({
@@ -322,38 +369,18 @@ async function main() {
                 category: 'Collectibles',
                 startingPrice: 200,
                 currentBid: 385,
-                startTime: new Date(now.getTime() - 96 * 60 * 60 * 1000),
-                endTime: new Date(now.getTime() - 6 * 60 * 60 * 1000), // Ended 6 hours ago
-                duration: 96,
-                status: 'ENDED',
-                sellerId: jane.id,
-                bidCount: 6,
-                viewCount: 67
-            }
-        }),
-
-        // ENDED AUCTION - Other user won (SOLD status)
-        prisma.listing.create({
-            data: {
-                title: 'PlayStation 5 Console',
-                description: 'PS5 disc version, lightly used with two controllers and 5 games.',
-                images: [
-                    'https://images.unsplash.com/photo-1606813907291-d86efa9b94db'
-                ],
-                category: 'Electronics',
-                startingPrice: 350,
-                currentBid: 475,
-                startTime: new Date(now.getTime() - 48 * 60 * 60 * 1000),
-                endTime: new Date(now.getTime() - 12 * 60 * 60 * 1000), // Ended 12 hours ago
+                startTime: new Date(now.getTime() - 120 * 60 * 60 * 1000),
+                endTime: new Date(now.getTime() - 72 * 60 * 60 * 1000),
                 duration: 48,
-                status: 'SOLD', // Already paid
-                sellerId: mike.id,
-                bidCount: 9,
-                viewCount: 123
+                status: 'SOLD',
+                sellerId: carol.id,
+                winnerId: alice.id,
+                bidCount: 8,
+                viewCount: 98
             }
         }),
 
-        // ENDED AUCTION - No reserve met (UNSOLD)
+        // ============ UNSOLD AUCTIONS (reserve not met) ============
         prisma.listing.create({
             data: {
                 title: 'Antique Diamond Ring',
@@ -362,380 +389,248 @@ async function main() {
                     'https://images.unsplash.com/photo-1605100804763-247f67b3557e'
                 ],
                 category: 'Jewelry',
-                startingPrice: 2000,
+                startingPrice: 3000,
                 reservePrice: 5000,
-                currentBid: 2200,
-                startTime: new Date(now.getTime() - 72 * 60 * 60 * 1000),
-                endTime: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+                currentBid: 3800,
+                startTime: new Date(now.getTime() - 96 * 60 * 60 * 1000),
+                endTime: new Date(now.getTime() - 48 * 60 * 60 * 1000),
                 duration: 48,
                 status: 'UNSOLD',
-                sellerId: jane.id,
-                bidCount: 3,
-                viewCount: 45
+                sellerId: carol.id,
+                bidCount: 5,
+                viewCount: 112
             }
         })
     ]);
+
     console.log(`✅ Created ${listings.length} listings\n`);
 
-    // Create bids for live listings
+    // Create bids for LIVE auctions (multiple users bidding)
     console.log('💰 Creating bids...');
-    const liveListing = listings[0]; // Rolex listing
-    const macbookListing = listings[1];
-    const gamingPcListing = listings[5];
     
-    // Ended auctions where Darshan won
-    const guitarListing = listings[8]; // Martin guitar
-    const iphoneListing = listings[9]; // iPhone 15 Pro
-    const vinylListing = listings[10]; // Vinyl collection
-    const ps5Listing = listings[11]; // PS5 (already sold to Sarah)
+    // Bids on Rolex Watch (listing 0) - Alice's listing
+    await prisma.bid.createMany({
+        data: [
+            { amount: 5200, bidderId: john.id, listingId: listings[0].id, status: 'OUTBID' },
+            { amount: 5400, bidderId: bob.id, listingId: listings[0].id, status: 'OUTBID' },
+            { amount: 5600, bidderId: carol.id, listingId: listings[0].id, status: 'OUTBID' },
+            { amount: 5800, bidderId: john.id, listingId: listings[0].id, status: 'OUTBID' },
+            { amount: 6000, bidderId: bob.id, listingId: listings[0].id, status: 'OUTBID' },
+            { amount: 6200, bidderId: john.id, listingId: listings[0].id, status: 'WINNING' }
+        ]
+    });
 
-    await Promise.all([
-        // Bids on Rolex
-        prisma.bid.create({
-            data: {
-                amount: 5000,
-                status: 'OUTBID',
-                bidderId: john.id,
-                listingId: liveListing.id,
-                createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 5200,
-                status: 'OUTBID',
-                bidderId: sarah.id,
-                listingId: liveListing.id,
-                createdAt: new Date(now.getTime() - 1 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 5500,
-                status: 'WINNING',
-                bidderId: john.id,
-                listingId: liveListing.id,
-                createdAt: new Date(now.getTime() - 30 * 60 * 1000)
-            }
-        }),
+    // Bids on MacBook (listing 1) - Bob's listing
+    await prisma.bid.createMany({
+        data: [
+            { amount: 2600, bidderId: john.id, listingId: listings[1].id, status: 'OUTBID' },
+            { amount: 2700, bidderId: alice.id, listingId: listings[1].id, status: 'OUTBID' },
+            { amount: 2800, bidderId: carol.id, listingId: listings[1].id, status: 'OUTBID' },
+            { amount: 2900, bidderId: john.id, listingId: listings[1].id, status: 'OUTBID' },
+            { amount: 3000, bidderId: alice.id, listingId: listings[1].id, status: 'OUTBID' },
+            { amount: 3100, bidderId: john.id, listingId: listings[1].id, status: 'WINNING' }
+        ]
+    });
 
-        // Bids on MacBook
-        prisma.bid.create({
-            data: {
-                amount: 2500,
-                status: 'OUTBID',
-                bidderId: sarah.id,
-                listingId: macbookListing.id,
-                createdAt: new Date(now.getTime() - 4 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 2650,
-                status: 'OUTBID',
-                bidderId: john.id,
-                listingId: macbookListing.id,
-                createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 2800,
-                status: 'WINNING',
-                bidderId: sarah.id,
-                listingId: macbookListing.id,
-                createdAt: new Date(now.getTime() - 1 * 60 * 60 * 1000)
-            }
-        }),
+    // Bids on Persian Rug (listing 2) - Carol's listing
+    await prisma.bid.createMany({
+        data: [
+            { amount: 1300, bidderId: john.id, listingId: listings[2].id, status: 'OUTBID' },
+            { amount: 1400, bidderId: alice.id, listingId: listings[2].id, status: 'OUTBID' },
+            { amount: 1500, bidderId: bob.id, listingId: listings[2].id, status: 'OUTBID' },
+            { amount: 1650, bidderId: john.id, listingId: listings[2].id, status: 'WINNING' }
+        ]
+    });
 
-        // Bids on Gaming PC
-        prisma.bid.create({
-            data: {
-                amount: 2000,
-                status: 'OUTBID',
-                bidderId: john.id,
-                listingId: gamingPcListing.id,
-                createdAt: new Date(now.getTime() - 20 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 2200,
-                status: 'OUTBID',
-                bidderId: sarah.id,
-                listingId: gamingPcListing.id,
-                createdAt: new Date(now.getTime() - 15 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 2400,
-                status: 'OUTBID',
-                bidderId: john.id,
-                listingId: gamingPcListing.id,
-                createdAt: new Date(now.getTime() - 10 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 2600,
-                status: 'WINNING',
-                bidderId: sarah.id,
-                listingId: gamingPcListing.id,
-                createdAt: new Date(now.getTime() - 5 * 60 * 60 * 1000)
-            }
-        }),
+    // Bids on Gaming PC (listing 3) - Alice's listing
+    await prisma.bid.createMany({
+        data: [
+            { amount: 2200, bidderId: bob.id, listingId: listings[3].id, status: 'OUTBID' },
+            { amount: 2400, bidderId: carol.id, listingId: listings[3].id, status: 'OUTBID' },
+            { amount: 2500, bidderId: john.id, listingId: listings[3].id, status: 'OUTBID' },
+            { amount: 2650, bidderId: bob.id, listingId: listings[3].id, status: 'OUTBID' },
+            { amount: 2750, bidderId: carol.id, listingId: listings[3].id, status: 'OUTBID' },
+            { amount: 2850, bidderId: john.id, listingId: listings[3].id, status: 'WINNING' }
+        ]
+    });
 
-        // Bids on Guitar (Darshan WON - needs to pay)
-        prisma.bid.create({
-            data: {
-                amount: 1000,
-                status: 'OUTBID',
-                bidderId: john.id,
-                listingId: guitarListing.id,
-                createdAt: new Date(now.getTime() - 45 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 1150,
-                status: 'OUTBID',
-                bidderId: sarah.id,
-                listingId: guitarListing.id,
-                createdAt: new Date(now.getTime() - 40 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 1300,
-                status: 'OUTBID',
-                bidderId: john.id,
-                listingId: guitarListing.id,
-                createdAt: new Date(now.getTime() - 30 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 1450,
-                status: 'WINNING',
-                bidderId: darshan.id,
-                listingId: guitarListing.id,
-                createdAt: new Date(now.getTime() - 25 * 60 * 60 * 1000)
-            }
-        }),
+    // Bids on Fender Guitar (listing 4) - Bob's listing
+    await prisma.bid.createMany({
+        data: [
+            { amount: 850, bidderId: alice.id, listingId: listings[4].id, status: 'OUTBID' },
+            { amount: 900, bidderId: john.id, listingId: listings[4].id, status: 'OUTBID' },
+            { amount: 1000, bidderId: carol.id, listingId: listings[4].id, status: 'OUTBID' },
+            { amount: 1050, bidderId: alice.id, listingId: listings[4].id, status: 'OUTBID' },
+            { amount: 1150, bidderId: john.id, listingId: listings[4].id, status: 'WINNING' }
+        ]
+    });
 
-        // Bids on iPhone (Darshan WON - needs to pay)
-        prisma.bid.create({
-            data: {
-                amount: 800,
-                status: 'OUTBID',
-                bidderId: sarah.id,
-                listingId: iphoneListing.id,
-                createdAt: new Date(now.getTime() - 68 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 950,
-                status: 'OUTBID',
-                bidderId: john.id,
-                listingId: iphoneListing.id,
-                createdAt: new Date(now.getTime() - 60 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 1050,
-                status: 'OUTBID',
-                bidderId: sarah.id,
-                listingId: iphoneListing.id,
-                createdAt: new Date(now.getTime() - 48 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 1100,
-                status: 'WINNING',
-                bidderId: darshan.id,
-                listingId: iphoneListing.id,
-                createdAt: new Date(now.getTime() - 36 * 60 * 60 * 1000)
-            }
-        }),
+    // Bids on ENDED auctions John won
+    // Martin Guitar (listing 7)
+    await prisma.bid.createMany({
+        data: [
+            { amount: 1100, bidderId: bob.id, listingId: listings[7].id, status: 'OUTBID' },
+            { amount: 1200, bidderId: carol.id, listingId: listings[7].id, status: 'OUTBID' },
+            { amount: 1300, bidderId: bob.id, listingId: listings[7].id, status: 'OUTBID' },
+            { amount: 1450, bidderId: john.id, listingId: listings[7].id, status: 'WON' }
+        ]
+    });
 
-        // Bids on Vinyl Collection (Darshan WON - needs to pay)
-        prisma.bid.create({
-            data: {
-                amount: 200,
-                status: 'OUTBID',
-                bidderId: john.id,
-                listingId: vinylListing.id,
-                createdAt: new Date(now.getTime() - 90 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 275,
-                status: 'OUTBID',
-                bidderId: sarah.id,
-                listingId: vinylListing.id,
-                createdAt: new Date(now.getTime() - 72 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 350,
-                status: 'OUTBID',
-                bidderId: john.id,
-                listingId: vinylListing.id,
-                createdAt: new Date(now.getTime() - 48 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 385,
-                status: 'WINNING',
-                bidderId: darshan.id,
-                listingId: vinylListing.id,
-                createdAt: new Date(now.getTime() - 30 * 60 * 60 * 1000)
-            }
-        }),
+    // iPhone (listing 8)
+    await prisma.bid.createMany({
+        data: [
+            { amount: 850, bidderId: alice.id, listingId: listings[8].id, status: 'OUTBID' },
+            { amount: 900, bidderId: carol.id, listingId: listings[8].id, status: 'OUTBID' },
+            { amount: 1000, bidderId: alice.id, listingId: listings[8].id, status: 'OUTBID' },
+            { amount: 1100, bidderId: john.id, listingId: listings[8].id, status: 'WON' }
+        ]
+    });
 
-        // Bids on PS5 (Sarah won and PAID)
-        prisma.bid.create({
-            data: {
-                amount: 350,
-                status: 'OUTBID',
-                bidderId: john.id,
-                listingId: ps5Listing.id,
-                createdAt: new Date(now.getTime() - 45 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 420,
-                status: 'OUTBID',
-                bidderId: darshan.id,
-                listingId: ps5Listing.id,
-                createdAt: new Date(now.getTime() - 36 * 60 * 60 * 1000)
-            }
-        }),
-        prisma.bid.create({
-            data: {
-                amount: 475,
-                status: 'WON',
-                bidderId: sarah.id,
-                listingId: ps5Listing.id,
-                createdAt: new Date(now.getTime() - 24 * 60 * 60 * 1000)
-            }
-        })
-    ]);
+    // Canon EOS R5 (listing 9)
+    await prisma.bid.createMany({
+        data: [
+            { amount: 2600, bidderId: alice.id, listingId: listings[9].id, status: 'OUTBID' },
+            { amount: 2700, bidderId: bob.id, listingId: listings[9].id, status: 'OUTBID' },
+            { amount: 2850, bidderId: alice.id, listingId: listings[9].id, status: 'OUTBID' },
+            { amount: 2950, bidderId: john.id, listingId: listings[9].id, status: 'WON' }
+        ]
+    });
+
+    // DJI Mavic 3 Pro (listing 10)
+    await prisma.bid.createMany({
+        data: [
+            { amount: 1600, bidderId: bob.id, listingId: listings[10].id, status: 'OUTBID' },
+            { amount: 1700, bidderId: carol.id, listingId: listings[10].id, status: 'OUTBID' },
+            { amount: 1800, bidderId: bob.id, listingId: listings[10].id, status: 'OUTBID' },
+            { amount: 1850, bidderId: john.id, listingId: listings[10].id, status: 'WON' }
+        ]
+    });
+
     console.log('✅ Created bids\n');
 
-    // Create payment for PS5 (already paid by Sarah)
-    console.log('💳 Creating payment records...');
-    await prisma.payment.create({
-        data: {
-            amount: 475,
-            currency: 'USD',
-            status: 'succeeded',
-            stripePaymentIntentId: 'pi_test_' + Date.now(),
-            buyerId: sarah.id,
-            sellerId: mike.id,
-            listingId: ps5Listing.id,
-            paidAt: new Date(now.getTime() - 10 * 60 * 60 * 1000)
-        }
-    });
-    console.log('✅ Created payment records\n');
-
-    // Create notifications
+    // Create notifications for John
     console.log('🔔 Creating notifications...');
     await Promise.all([
+        // Won auctions - need to pay
         prisma.notification.create({
             data: {
-                userId: darshan.id,
+                userId: john.id,
                 type: 'AUCTION_WON',
-                message: 'Congratulations! You won the auction for "Acoustic Guitar - Martin D-28". Please complete payment within 48 hours.',
-                link: `/listings/${guitarListing.id}`,
-                read: false
-            }
-        }),
-        prisma.notification.create({
-            data: {
-                userId: darshan.id,
-                type: 'AUCTION_WON',
-                message: 'Congratulations! You won the auction for "iPhone 15 Pro Max 256GB". Please complete payment within 48 hours.',
-                link: `/listings/${iphoneListing.id}`,
-                read: false
-            }
-        }),
-        prisma.notification.create({
-            data: {
-                userId: darshan.id,
-                type: 'AUCTION_WON',
-                message: 'Congratulations! You won the auction for "Vintage Vinyl Record Collection". Please complete payment within 48 hours.',
-                link: `/listings/${vinylListing.id}`,
+                message: '🎉 Congratulations! You won the auction for Acoustic Guitar - Martin D-28. Please complete payment.',
+                link: `/listings/${listings[7].id}`,
                 read: false
             }
         }),
         prisma.notification.create({
             data: {
                 userId: john.id,
-                type: 'BID_OUTBID',
-                message: 'You have been outbid on "Vintage Rolex Submariner Watch"',
-                link: `/listings/${liveListing.id}`,
+                type: 'AUCTION_WON',
+                message: '🎉 Congratulations! You won the auction for iPhone 15 Pro Max 256GB. Please complete payment.',
+                link: `/listings/${listings[8].id}`,
                 read: false
             }
         }),
         prisma.notification.create({
             data: {
-                userId: sarah.id,
-                type: 'BID_PLACED',
-                message: 'New bid placed on "MacBook Pro 16" M3 Max"',
-                link: `/listings/${macbookListing.id}`,
+                userId: john.id,
+                type: 'AUCTION_WON',
+                message: '🎉 Congratulations! You won the auction for Canon EOS R5 Camera Body. Please complete payment.',
+                link: `/listings/${listings[9].id}`,
                 read: false
             }
         }),
         prisma.notification.create({
             data: {
-                userId: jane.id,
-                type: 'BID_PLACED',
-                message: 'New bid of $5500 placed on "Vintage Rolex Submariner Watch"',
-                link: `/listings/${liveListing.id}`,
+                userId: john.id,
+                type: 'AUCTION_WON',
+                message: '🎉 Congratulations! You won the auction for DJI Mavic 3 Pro Drone. Please complete payment.',
+                link: `/listings/${listings[10].id}`,
                 read: false
+            }
+        }),
+        // Auction ending notifications
+        prisma.notification.create({
+            data: {
+                userId: john.id,
+                type: 'AUCTION_ENDING_SOON',
+                message: '⏰ Vintage Rolex Watch auction ends tomorrow at 11 AM!',
+                link: `/listings/${listings[0].id}`,
+                read: false
+            }
+        }),
+        prisma.notification.create({
+            data: {
+                userId: john.id,
+                type: 'BID_PLACED',
+                message: '✅ Your bid of $6,200 on Vintage Rolex Watch is currently winning!',
+                link: `/listings/${listings[0].id}`,
+                read: true
+            }
+        }),
+        // Past payment notification
+        prisma.notification.create({
+            data: {
+                userId: john.id,
+                type: 'PAYMENT_RECEIVED',
+                message: '💰 Payment of $475 received for PlayStation 5 Console',
+                link: `/listings/${listings[11].id}`,
+                read: true
             }
         })
     ]);
     console.log('✅ Created notifications\n');
 
-    console.log('✅ Database seeding completed successfully!\n');
-    console.log('📊 Summary:');
-    console.log(`   - ${users.length} users created`);
-    console.log(`   - ${listings.length} listings created`);
-    console.log(`   - 6 live auctions`);
-    console.log(`   - 2 upcoming auctions`);
-    console.log(`   - 3 ended auctions (Test user WON - needs to pay)`);
-    console.log(`   - 1 sold auction (already paid)`);
-    console.log(`   - 1 unsold auction (reserve not met)\n`);
-    console.log('🔐 Login credentials:');
-    console.log('   TEST USER (Has 3 winning auctions to pay):');
-    console.log('   - Email: chavandarshan24@gmail.com');
-    console.log('   - Password: 22446688\n');
-    console.log('   Other users (password: password123):');
-    console.log('   - john@example.com (BUYER)');
-    console.log('   - jane@example.com (SELLER/VENDOR)');
-    console.log('   - mike@example.com (VENDOR)');
-    console.log('   - sarah@example.com (BUYER)');
-    console.log('   - admin@example.com (ADMIN)\n');
-    console.log('💰 Test User Winning Auctions (ENDED - needs payment):');
-    console.log('   1. Acoustic Guitar - Martin D-28: $1,450.00');
-    console.log('   2. iPhone 15 Pro Max 256GB: $1,100.00');
-    console.log('   3. Vintage Vinyl Record Collection: $385.00');
-    console.log('   Total to pay: $2,935.00\n');
+    // Create payment for SOLD listing
+    console.log('💳 Creating payments...');
+    await prisma.payment.create({
+        data: {
+            amount: 475,
+            currency: 'USD',
+            status: 'succeeded',
+            buyerId: john.id,
+            sellerId: bob.id,
+            listingId: listings[11].id,
+            paidAt: new Date(now.getTime() - 24 * 60 * 60 * 1000)
+        }
+    });
+    await prisma.payment.create({
+        data: {
+            amount: 385,
+            currency: 'USD',
+            status: 'succeeded',
+            buyerId: alice.id,
+            sellerId: carol.id,
+            listingId: listings[12].id,
+            paidAt: new Date(now.getTime() - 48 * 60 * 60 * 1000)
+        }
+    });
+    console.log('✅ Created payments\n');
+
+    console.log('========================================');
+    console.log('🎉 Database seeding completed!');
+    console.log('========================================');
+    console.log('\n📊 Summary:');
+    console.log('   👤 Users: 4 (John, Alice, Bob, Carol)');
+    console.log(`   📦 Listings: ${listings.length}`);
+    console.log('      - LIVE: 5 (ending tomorrow 11am-2pm)');
+    console.log('      - UPCOMING: 2');
+    console.log('      - ENDED: 4 (John won - needs to pay)');
+    console.log('      - SOLD: 2');
+    console.log('      - UNSOLD: 1');
+    console.log('\n🔑 Login Credentials:');
+    console.log('   Email: chavandarshan24@gmail.com');
+    console.log('   Password: password123');
+    console.log('\n💰 John has WON 4 auctions awaiting payment:');
+    console.log('   1. Acoustic Guitar - Martin D-28 ($1,450)');
+    console.log('   2. iPhone 15 Pro Max 256GB ($1,100)');
+    console.log('   3. Canon EOS R5 Camera Body ($2,950)');
+    console.log('   4. DJI Mavic 3 Pro Drone ($1,850)');
+    console.log('   Total: $7,350\n');
 }
 
 main()
     .catch((e) => {
-        console.error('❌ Error seeding database:', e);
+        console.error('❌ Seeding error:', e);
         process.exit(1);
     })
     .finally(async () => {

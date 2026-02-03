@@ -96,8 +96,6 @@ model Listing {
     id             String        @id @default(cuid())
     title          String
     description    String
-    images         String[]      @default([])
-    videos         String[]      @default([])
     startingPrice  Float
     reservePrice   Float?
     buyNowPrice    Float?
@@ -119,6 +117,8 @@ model Listing {
     bids     Bid[]
     payments Payment[]
     ratings  Rating[]
+    images   ListingImage[]
+    videos   ListingVideo[]
 
     @@index([sellerId])
     @@index([status])
@@ -131,6 +131,30 @@ model Listing {
     @@index([createdAt])
     @@index([status, endTime])
     @@index([category, status])
+}
+
+// Listing Images Model (LISTING_IMAGES)
+model ListingImage {
+    id        String   @id @default(cuid())
+    listingId String
+    imageUrl  String
+    createdAt DateTime @default(now())
+
+    listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+    @@index([listingId])
+}
+
+// Listing Videos Model (LISTING_VIDEOS)
+model ListingVideo {
+    id        String   @id @default(cuid())
+    listingId String
+    videoUrl  String
+    createdAt DateTime @default(now())
+
+    listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+    @@index([listingId])
 }
 
 // Bid Model

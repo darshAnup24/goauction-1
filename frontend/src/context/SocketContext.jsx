@@ -97,25 +97,16 @@ export function useListingRoom(listingId) {
   useEffect(() => {
     if (!socket || !isConnected || !listingId) return;
 
-    // Join listing room
-    socket.emit('listing:join', { listingId });
-
-    // Listen for join confirmation
-    const handleJoined = (data) => {
-      if (data.listingId === listingId) {
-        setIsJoined(true);
-        console.log(`✅ Joined listing room: ${listingId}`);
-      }
-    };
-
-    socket.on('listing:joined', handleJoined);
+    // Join listing room (matches backend 'join-auction' event)
+    socket.emit('join-auction', { listingId });
+    setIsJoined(true);
+    console.log(`✅ Joined auction room: ${listingId}`);
 
     // Cleanup: leave room on unmount
     return () => {
-      socket.off('listing:joined', handleJoined);
-      socket.emit('listing:leave', { listingId });
+      socket.emit('leave-auction', { listingId });
       setIsJoined(false);
-      console.log(`👋 Left listing room: ${listingId}`);
+      console.log(`👋 Left auction room: ${listingId}`);
     };
   }, [socket, isConnected, listingId]);
 

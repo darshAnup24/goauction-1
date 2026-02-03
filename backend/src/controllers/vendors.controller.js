@@ -189,7 +189,7 @@ class VendorsController {
                 _count: true
             });
 
-            const recentSales = await prisma.payment.findMany({
+                const recentSalesRaw = await prisma.payment.findMany({
                 where: {
                     sellerId: userId,
                     status: 'succeeded'
@@ -198,8 +198,12 @@ class VendorsController {
                     listing: {
                         select: {
                             id: true,
-                            title: true,
-                            images: true
+                                title: true,
+                                images: {
+                                    select: {
+                                        imageUrl: true
+                                    }
+                                }
                         }
                     },
                     buyer: {
@@ -214,7 +218,17 @@ class VendorsController {
                 take: 10
             });
 
-            res.json({
+                const recentSales = recentSalesRaw.map((sale) => ({
+                    ...sale,
+                    listing: sale.listing
+                        ? {
+                            ...sale.listing,
+                            images: sale.listing.images.map((img) => img.imageUrl)
+                        }
+                        : null
+                }));
+
+                res.json({
                 success: true,
                 earnings: {
                     total: earnings._sum.amount || 0,

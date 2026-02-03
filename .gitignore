@@ -58,3 +58,7 @@ frontend/.pm2/
 # Uploads (if storing locally)
 backend/uploads/
 uploads/
+
+# Environment files
+.env*
+*.pem

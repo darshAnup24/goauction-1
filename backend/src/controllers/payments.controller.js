@@ -15,7 +15,9 @@ class PaymentsController {
                 where: { id: listingId },
                 include: {
                     bids: {
-                        where: { status: 'WINNING' },
+                        where: { 
+                            status: { in: ['WINNING', 'WON'] }
+                        },
                         include: {
                             bidder: true
                         }
@@ -42,9 +44,11 @@ class PaymentsController {
                 });
             }
 
+            // Check if user won - either by winnerId or by having a winning/won bid
             const winningBid = listing.bids.find(bid => bid.bidderId === userId);
+            const isWinner = listing.winnerId === userId || winningBid;
 
-            if (!winningBid) {
+            if (!isWinner) {
                 return res.status(403).json({
                     success: false,
                     message: 'You did not win this auction'
@@ -388,7 +392,7 @@ class PaymentsController {
 
             const skip = (parseInt(page) - 1) * parseInt(limit);
 
-            const [payments, total] = await Promise.all([
+            const [paymentsRaw, total] = await Promise.all([
                 prisma.payment.findMany({
                     where,
                     include: {
@@ -396,7 +400,11 @@ class PaymentsController {
                             select: {
                                 id: true,
                                 title: true,
-                                images: true
+                                images: {
+                                    select: {
+                                        imageUrl: true
+                                    }
+                                }
                             }
                         },
                         buyer: {
@@ -420,6 +428,16 @@ class PaymentsController {
                 }),
                 prisma.payment.count({ where })
             ]);
+
+            const payments = paymentsRaw.map((payment) => ({
+                ...payment,
+                listing: payment.listing
+                    ? {
+                        ...payment.listing,
+                        images: payment.listing.images.map((img) => img.imageUrl)
+                    }
+                    : null
+            }));
 
             res.json({
                 success: true,
@@ -447,7 +465,9 @@ class PaymentsController {
                 where: { id: listingId },
                 include: {
                     bids: {
-                        where: { status: 'WINNING' },
+                        where: { 
+                            status: { in: ['WINNING', 'WON'] }
+                        },
                         include: {
                             bidder: true
                         }
@@ -457,6 +477,11 @@ class PaymentsController {
                             id: true,
                             username: true,
                             stripeAccountId: true
+                        }
+                    },
+                    images: {
+                        select: {
+                            imageUrl: true
                         }
                     }
                 }
@@ -478,9 +503,11 @@ class PaymentsController {
                 });
             }
 
+            // Check if user won - either by winnerId or by having a winning/won bid
             const winningBid = listing.bids.find(bid => bid.bidderId === userId);
+            const isWinner = listing.winnerId === userId || winningBid;
 
-            if (!winningBid) {
+            if (!isWinner) {
                 return res.status(403).json({
                     success: false,
                     message: 'You did not win this auction'
@@ -517,7 +544,7 @@ class PaymentsController {
                             product_data: {
                                 name: listing.title,
                                 description: `Winning bid for auction`,
-                                images: listing.images.slice(0, 1)
+                                images: listing.images.map((img) => img.imageUrl).slice(0, 1)
                             },
                             unit_amount: Math.round(listing.currentBid * 100)
                         },
