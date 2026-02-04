@@ -2,7 +2,7 @@ module.exports = {
   apps: [{
     name: 'goauction-frontend',
     script: 'serve',
-    args: '-s build -l 3000',
+    args: ['-s', 'build', '-l', '3000'],
     env: {
       NODE_ENV: 'production'
     },

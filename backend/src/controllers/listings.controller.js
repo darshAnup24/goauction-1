@@ -329,10 +329,18 @@ class ListingsController {
             const now = new Date();
 
             // Determine status
+            // Mark as LIVE if start time is in the past or within next 2 minutes
             let status = 'UPCOMING';
-            if (start <= new Date(now.getTime() + 5 * 60 * 1000)) {
+            if (start <= new Date(now.getTime() + 2 * 60 * 1000)) {
                 status = 'LIVE';
             }
+
+            console.log('Status determination:', { 
+                start: start.toISOString(), 
+                now: now.toISOString(), 
+                threshold: new Date(now.getTime() + 2 * 60 * 1000).toISOString(),
+                status 
+            });
 
             // Calculate duration in hours
             const durationHours = Math.ceil((end - start) / (1000 * 60 * 60));

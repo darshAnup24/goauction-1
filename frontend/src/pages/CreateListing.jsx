@@ -28,11 +28,12 @@ const CreateListing = () => {
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
 
-  // Get current time rounded to next hour
+  // Get current time (for immediate listing start)
   const getDefaultStartTime = () => {
     const now = new Date();
-    now.setHours(now.getHours() + 1);
-    now.setMinutes(0);
+    // Round to nearest 5 minutes for convenience
+    const minutes = Math.ceil(now.getMinutes() / 5) * 5;
+    now.setMinutes(minutes);
     now.setSeconds(0);
     now.setMilliseconds(0);
     return now.toISOString().slice(0, 16);
@@ -40,8 +41,10 @@ const CreateListing = () => {
 
   const getDefaultEndTime = () => {
     const now = new Date();
-    now.setHours(now.getHours() + 25); // 24 hours from next hour
-    now.setMinutes(0);
+    // 24 hours from now
+    now.setHours(now.getHours() + 24);
+    const minutes = Math.ceil(now.getMinutes() / 5) * 5;
+    now.setMinutes(minutes);
     now.setSeconds(0);
     now.setMilliseconds(0);
     return now.toISOString().slice(0, 16);
@@ -199,8 +202,10 @@ const CreateListing = () => {
     const endTime = new Date(formData.endTime);
     const now = new Date();
 
-    if (startTime < now) {
-      toast.error('Start time must be in the future');
+    // Allow start time to be up to 2 minutes in the past (for immediate listings)
+    const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
+    if (startTime < twoMinutesAgo) {
+      toast.error('Start time cannot be more than 2 minutes in the past');
       return;
     }
 
